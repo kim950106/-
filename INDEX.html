@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>전북푸드커넥트</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <style>
+        body { font-family: "Pretendard Variable", sans-serif; background-color: #F8F9FA; -webkit-tap-highlight-color: transparent; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="pb-24 text-gray-800 antialiased">
+
+    <!-- 헤더 -->
+    <header class="fixed top-0 w-full z-40 px-5 py-4 bg-white/90 backdrop-blur-md border-b border-gray-100 flex justify-between items-center">
+        <h1 class="text-lg font-extrabold text-orange-600 tracking-tight">전북푸드커넥트 🚚</h1>
+        <span class="text-[10px] bg-gray-100 px-2 py-1 rounded-full font-bold text-gray-500">전북 전지역</span>
+    </header>
+
+    <!-- 1. 고객용 화면 -->
+    <main id="customerView" class="pt-20 animate-fade-in">
+        <!-- 메인 배너 -->
+        <section class="px-5 mb-8">
+            <div class="relative h-64 rounded-[2rem] overflow-hidden shadow-xl shadow-orange-500/10">
+                <img src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800" class="absolute inset-0 w-full h-full object-cover brightness-75">
+                <div class="absolute bottom-6 left-6 text-white">
+                    <span class="inline-block px-2 py-1 mb-2 text-[10px] font-bold bg-orange-600 rounded">공식 파트너</span>
+                    <h2 class="text-2xl font-bold leading-tight">성공적인 행사의 시작,<br>검증된 푸드트럭</h2>
+                </div>
+            </div>
+        </section>
+
+        <!-- 트럭 리스트 (승인된 업체만 표시) -->
+        <section class="mb-10 pl-5">
+            <h3 class="text-lg font-bold mb-3 pr-5 text-gray-900">🔥 이달의 추천 라인업</h3>
+            <div id="truckList" class="flex gap-4 overflow-x-auto pb-6 pr-5 scrollbar-hide snap-x">
+                <div class="w-full py-10 text-center text-xs text-gray-400">데이터를 불러오는 중입니다...</div>
+            </div>
+        </section>
+
+        <!-- 견적 문의 폼 -->
+        <section class="px-5">
+            <div class="bg-white p-6 rounded-3xl shadow-xl shadow-gray-100 border border-gray-50">
+                <div class="text-center mb-6">
+                    <h3 class="text-xl font-bold">📝 간편 견적 요청</h3>
+                    <p class="text-xs text-gray-400 mt-1">원하는 예산과 메뉴를 알려주세요.</p>
+                </div>
+                <form id="quoteForm" class="space-y-3">
+                    <input type="hidden" name="type" value="quote">
+                    <div class="flex gap-3">
+                        <input type="text" name="name" placeholder="신청자명" required class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 transition">
+                        <input type="tel" name="phone" placeholder="연락처" required class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 transition">
+                    </div>
+                    <input type="text" name="location" placeholder="행사 장소 (예: 전주 월드컵경기장)" required class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 transition">
+                    <div class="flex gap-3">
+                        <input type="date" name="date" required class="w-full bg-gray-50 p-3 rounded-xl text-sm text-gray-500 outline-none focus:ring-2 focus:ring-orange-500 transition">
+                        <input type="text" name="budget" placeholder="예산/인원" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 transition">
+                    </div>
+                    <textarea name="details" rows="3" placeholder="요청사항 (원하는 메뉴 등)" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 transition"></textarea>
+                    <button type="submit" id="quoteBtn" class="w-full bg-gray-900 text-white py-4 rounded-xl font-bold shadow-lg mt-2 active:scale-95 transition">무료 견적 받기</button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <!-- 2. 파트너 신청 화면 (사장님용) -->
+    <main id="partnerView" class="hidden pt-20 bg-gray-900 min-h-screen text-white pb-24">
+        <section class="px-6 text-center mb-8">
+            <h2 class="text-2xl font-bold mb-2">사장님, 환영합니다!</h2>
+            <p class="text-gray-400 text-xs">전북푸드커넥트와 함께 매출을 높여보세요.</p>
+        </section>
+        
+        <section class="px-5">
+            <form id="partnerForm" class="space-y-4 bg-gray-800 p-6 rounded-3xl border border-gray-700">
+                <input type="hidden" name="type" value="partner">
+                <div class="space-y-3">
+                    <label class="text-xs text-gray-500 font-bold ml-1">기본 정보</label>
+                    <input type="text" name="truckName" placeholder="상호명" required class="w-full bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm focus:border-orange-500 outline-none transition">
+                    <div class="flex gap-2">
+                        <input type="text" name="ownerName" placeholder="대표자명" required class="w-full bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm focus:border-orange-500 outline-none transition">
+                        <input type="tel" name="phone" placeholder="연락처" required class="w-full bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm focus:border-orange-500 outline-none transition">
+                    </div>
+                    <input type="text" name="menu" placeholder="주요 메뉴" required class="w-full bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm focus:border-orange-500 outline-none transition">
+                    <input type="text" name="region" placeholder="활동 지역" required class="w-full bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm focus:border-orange-500 outline-none transition">
+                </div>
+
+                <div class="space-y-3 pt-2 border-t border-gray-700">
+                    <label class="text-xs text-gray-500 font-bold ml-1">필수 서류 첨부 (이미지)</label>
+                    <!-- 사업자 등록증 -->
+                    <div class="p-3 bg-gray-900 rounded-xl border border-gray-600 flex justify-between items-center">
+                        <span class="text-xs text-gray-300">사업자등록증</span>
+                        <input type="file" id="fileBiz" accept="image/*" class="text-[10px] text-gray-500 w-40">
+                    </div>
+                    <!-- 통장 사본 -->
+                    <div class="p-3 bg-gray-900 rounded-xl border border-gray-600 flex justify-between items-center">
+                        <span class="text-xs text-gray-300">통장사본</span>
+                        <input type="file" id="fileBank" accept="image/*" class="text-[10px] text-gray-500 w-40">
+                    </div>
+                </div>
+
+                <button type="submit" id="partnerBtn" class="w-full bg-orange-600 text-white py-4 rounded-xl font-bold mt-4 shadow-lg shadow-orange-900/50">입점 신청하기</button>
+            </form>
+        </section>
+    </main>
+
+    <!-- 하단 탭바 -->
+    <nav class="fixed bottom-6 left-5 right-5 h-16 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] flex justify-between items-center px-2 z-50 border border-gray-100">
+        <button onclick="switchTab('customer')" id="tabCustomer" class="w-full h-full flex flex-col items-center justify-center text-orange-600 gap-1">
+            <span class="text-xl">📋</span>
+            <span class="text-[10px] font-bold">견적요청</span>
+        </button>
+        <div class="w-px h-6 bg-gray-100"></div>
+        <button onclick="switchTab('partner')" id="tabPartner" class="w-full h-full flex flex-col items-center justify-center text-gray-400 gap-1">
+            <span class="text-xl">⚡</span>
+            <span class="text-[10px] font-bold">파트너신청</span>
+        </button>
+    </nav>
+
+    <script>
+        // ✅ 사용자가 제공한 배포 URL 적용
+        const API_URL = "https://script.google.com/macros/s/AKfycbzgM5Xcck5RvguAk7KqIzJAXYVfKYWzJhKdgGttFah8Wg2PGFHwYt7DhkTMrbmNIVR1/exec";
+
+        // [초기 실행] 서버에서 승인된 트럭 리스트 가져오기
+        fetch(`${API_URL}?mode=client`).then(r => r.json()).then(json => {
+            const list = document.getElementById('truckList');
+            list.innerHTML = '';
+            
+            if(!json.data || json.data.length === 0) {
+                list.innerHTML = '<div class="w-full py-10 text-center text-xs text-gray-400">현재 등록된 트럭이 없습니다.</div>';
+                return;
+            }
+            
+            json.data.forEach(t => {
+                list.innerHTML += `
+                    <div class="snap-center shrink-0 w-36 cursor-pointer group">
+                        <div class="h-48 rounded-2xl overflow-hidden relative shadow-md bg-gray-100">
+                            <img src="${t.img}" class="w-full h-full object-cover transition duration-500 group-hover:scale-110">
+                            <div class="absolute bottom-0 w-full p-3 bg-gradient-to-t from-black/80 to-transparent text-white">
+                                <span class="text-[9px] font-bold bg-orange-600 px-1.5 py-0.5 rounded">${t.menu ? t.menu.split(',')[0] : '메뉴'}</span>
+                                <h4 class="font-bold text-xs mt-1 leading-tight">${t.name}</h4>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+        }).catch(err => {
+            console.error(err);
+            document.getElementById('truckList').innerHTML = '<div class="w-full py-10 text-center text-xs text-red-400">데이터 로드 실패</div>';
+        });
+
+        // [탭 전환] 고객 뷰 <-> 파트너 뷰
+        function switchTab(mode) {
+            const cView = document.getElementById('customerView');
+            const pView = document.getElementById('partnerView');
+            const cBtn = document.getElementById('tabCustomer');
+            const pBtn = document.getElementById('tabPartner');
+
+            if(mode === 'customer') {
+                cView.classList.remove('hidden'); pView.classList.add('hidden');
+                cBtn.classList.replace('text-gray-400', 'text-orange-600');
+                pBtn.classList.replace('text-white', 'text-gray-400');
+                document.body.style.backgroundColor = '#F8F9FA';
+            } else {
+                cView.classList.add('hidden'); pView.classList.remove('hidden');
+                cBtn.classList.replace('text-orange-600', 'text-gray-400');
+                pBtn.classList.replace('text-gray-400', 'text-white');
+                document.body.style.backgroundColor = '#111827';
+            }
+            window.scrollTo(0,0);
+        }
+
+        // [폼 전송] 견적 요청 및 파트너 신청 (파일 업로드 포함)
+        async function handleForm(e, formId, btnId) {
+            e.preventDefault();
+            const btn = document.getElementById(btnId);
+            const originalText = btn.innerText;
+            btn.innerText = "전송 중..."; btn.disabled = true;
+
+            const formData = new FormData(document.getElementById(formId));
+            const payload = Object.fromEntries(formData.entries());
+
+            // 파트너 신청일 경우 파일 처리
+            if(formId === 'partnerForm') {
+                const f1 = document.getElementById('fileBiz').files[0];
+                const f2 = document.getElementById('fileBank').files[0];
+                if(f1) payload.fileBiz = await toBase64(f1);
+                if(f2) payload.fileBank = await toBase64(f2);
+            }
+
+            fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) })
+            .then(r => r.json())
+            .then(json => {
+                alert(json.status === 'success' ? json.msg : '오류: ' + json.msg);
+                if(json.status === 'success') document.getElementById(formId).reset();
+            })
+            .catch(() => alert('서버 통신 오류가 발생했습니다.'))
+            .finally(() => { btn.innerText = originalText; btn.disabled = false; });
+        }
+
+        // 파일을 Base64 문자열로 변환하는 함수
+        const toBase64 = file => new Promise((res, rej) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => res(reader.result);
+            reader.onerror = error => rej(error);
+        });
+
+        // 이벤트 리스너 연결
+        document.getElementById('quoteForm').onsubmit = (e) => handleForm(e, 'quoteForm', 'quoteBtn');
+        document.getElementById('partnerForm').onsubmit = (e) => handleForm(e, 'partnerForm', 'partnerBtn');
+    </script>
+</body>
+</html>
