@@ -9,8 +9,10 @@
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col items-center pt-10">
 
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black/50 z-50 flex justify-center items-center text-white font-bold">처리 중...</div>
+
     <div id="loginBox" class="bg-white p-8 rounded-2xl shadow-xl w-96 text-center">
-        <h1 class="text-xl font-bold mb-6">🔒 관리자 접속</h1>
+        <h1 class="text-xl font-bold mb-6">🔒 관리자/파트너 접속</h1>
         <input type="text" id="uid" placeholder="ID" class="w-full mb-3 p-3 border rounded-lg">
         <input type="password" id="upw" placeholder="PW" class="w-full mb-4 p-3 border rounded-lg">
         <button onclick="login()" class="w-full bg-gray-900 text-white p-3 rounded-lg font-bold">로그인</button>
@@ -23,12 +25,16 @@
         </div>
 
         <div class="flex gap-2 mb-4 overflow-x-auto">
-            <button onclick="filterAdmin('푸드트럭')" id="btnTruck" class="whitespace-nowrap px-4 py-2 bg-gray-800 text-white rounded-lg font-bold">🚛 트럭 관리</button>
-            <button onclick="filterAdmin('인력')" id="btnStaff" class="whitespace-nowrap px-4 py-2 bg-white text-gray-600 border rounded-lg font-bold">🧑‍🍳 인력 현황</button>
-            <button onclick="showQuotes()" id="btnQuote" class="whitespace-nowrap px-4 py-2 bg-white text-gray-600 border rounded-lg font-bold">📩 받은 견적</button>
+            <button onclick="filterAdmin('푸드트럭')" id="btnTruck" class="whitespace-nowrap px-4 py-2 bg-gray-800 text-white rounded-lg font-bold">🚛 트럭</button>
+            <button onclick="filterAdmin('인력')" id="btnStaff" class="whitespace-nowrap px-4 py-2 bg-white text-gray-600 border rounded-lg font-bold">🧑‍🍳 인력</button>
+            <button onclick="showQuotes()" id="btnQuote" class="relative whitespace-nowrap px-4 py-2 bg-white text-gray-600 border rounded-lg font-bold">📩 받은 견적</button>
+            <button onclick="openMyInfo()" id="btnMyInfo" class="hidden whitespace-nowrap px-4 py-2 bg-orange-600 text-white rounded-lg font-bold">✏️ 내 정보 수정</button>
         </div>
 
-        <div class="bg-white rounded-xl shadow overflow-hidden">
+        <!-- 검색창 -->
+        <div class="mb-4"><input type="text" id="searchInput" onkeyup="searchTable()" placeholder="이름, 연락처 검색..." class="w-full p-3 border rounded-xl text-sm outline-none focus:border-orange-500"></div>
+
+        <div id="listContainer" class="bg-white rounded-xl shadow overflow-hidden">
             <table class="w-full text-left text-sm text-gray-600">
                 <thead class="bg-gray-100 text-gray-800 uppercase font-bold text-xs">
                     <tr><th class="px-6 py-3">상태</th><th class="px-6 py-3">정보</th><th class="px-6 py-3">내용/서류</th><th id="colAdmin" class="px-6 py-3 text-center">관리</th></tr>
@@ -36,22 +42,45 @@
                 <tbody id="list" class="divide-y divide-gray-100"></tbody>
             </table>
         </div>
+
+        <!-- 내 정보 수정 폼 -->
+        <div id="myInfoForm" class="hidden bg-white p-6 rounded-xl shadow">
+            <h3 class="text-lg font-bold mb-4">내 정보 수정</h3>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div><label class="text-xs">사진2</label><input type="file" id="img2" class="w-full text-xs"></div>
+                <div><label class="text-xs">사진3</label><input type="file" id="img3" class="w-full text-xs"></div>
+                <div><label class="text-xs">사진4</label><input type="file" id="img4" class="w-full text-xs"></div>
+                <div><label class="text-xs">사진5</label><input type="file" id="img5" class="w-full text-xs"></div>
+            </div>
+            <div class="mb-4"><label class="text-xs font-bold">소개글</label><textarea id="editDesc" rows="3" class="w-full border p-2 rounded text-sm"></textarea></div>
+            <div class="mb-4"><label class="text-xs font-bold">기본 견적</label><input type="text" id="editQuote" class="w-full border p-2 rounded text-sm"></div>
+            <button onclick="submitUpdate()" class="bg-orange-600 text-white px-6 py-2 rounded font-bold">저장하기</button>
+        </div>
     </div>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbxJiSRDcpYKQkAJlc_NRgB3nFuJaUkaopPAow1sKMRWahRUp4DbCzrvAQeNhvx8zFyn/exec"; // ⚠️ URL 교체
-        let adminData = [], quoteData = [], currentRole = "", userName = "";
+        const API_URL = "YOUR_GOOGLE_SCRIPT_URL_HERE"; // ⚠️ URL 교체
+        let adminData = [], quoteData = [], currentRole = "", userName = "", partnerRow = 0;
+        const showLoad = () => document.getElementById('loadingOverlay').classList.remove('hidden');
+        const hideLoad = () => document.getElementById('loadingOverlay').classList.add('hidden');
 
         function login() {
             const id = document.getElementById('uid').value, pw = document.getElementById('upw').value;
+            showLoad();
             fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'login', id, pw }) })
             .then(r=>r.json()).then(res => {
+                hideLoad();
                 if(res.status==='success') {
-                    currentRole = res.role; userName = res.name;
+                    currentRole=res.role; userName=res.name; partnerRow=res.partnerRow;
                     document.getElementById('loginBox').classList.add('hidden');
                     document.getElementById('dashboard').classList.remove('hidden');
-                    document.getElementById('roleBadge').innerText = `${userName} (${currentRole==='super_admin'?'슈퍼관리자':'파트너'})`;
-                    loadData();
+                    document.getElementById('roleBadge').innerText = userName;
+                    if(currentRole==='partner_admin') {
+                        document.getElementById('btnTruck').classList.add('hidden');
+                        document.getElementById('btnStaff').classList.add('hidden');
+                        document.getElementById('btnMyInfo').classList.remove('hidden');
+                        showQuotes();
+                    } else loadData();
                 } else alert(res.msg);
             });
         }
@@ -59,89 +88,74 @@
         function loadData() {
             fetch(`${API_URL}?mode=admin`).then(r=>r.json()).then(res => {
                 adminData = res.data; quoteData = res.quotes;
-                if(currentRole==='partner_admin') {
-                    document.getElementById('btnTruck').classList.add('hidden');
-                    document.getElementById('btnStaff').classList.add('hidden'); 
-                    showQuotes(); 
-                } else {
-                    filterAdmin('푸드트럭');
-                }
+                if(currentRole!=='partner_admin') filterAdmin('푸드트럭');
             });
         }
 
         function filterAdmin(cat) {
-            resetTabs('btnTruck', 'btnStaff');
+            resetTabs('btnTruck','btnStaff');
             const list = document.getElementById('list'); list.innerHTML = '';
-            let filtered = adminData.filter(d => d.category === cat);
-            
-            filtered.forEach(r => {
+            adminData.filter(d => d.category === cat).forEach(r => {
                 const isApp = r.status === '승인';
-                let docs = `${r.bizUrl?`<a href="${r.bizUrl}" target="_blank" class="text-blue-500 underline block text-xs">📄 사업자</a>`:''} ${r.otherUrl?`<a href="${r.otherUrl}" target="_blank" class="text-green-600 underline block text-xs">🏥 보건증</a>`:''}`;
-                let subInfo = r.category==='인력' ? `<span class="text-blue-600 font-bold">${r.age}세</span> / 📅 ${r.dates}` : `${r.owner} / ${r.phone}`;
-                
-                let btns = "";
-                if(currentRole==='super_admin') {
-                    btns = `<button onclick="update(${r.rowIndex}, 'status', '${isApp?'대기':'승인'}')" class="bg-gray-800 text-white px-3 py-1 rounded text-xs">${isApp?'취소':'승인'}</button>
-                            <button onclick="update(${r.rowIndex}, 'delete', '')" class="text-red-500 underline text-xs ml-2">삭제</button>`;
-                }
-                let quoteEdit = (cat === '푸드트럭') ? `<div class="text-xs text-gray-400 mt-1 cursor-pointer hover:text-orange-500" onclick="updateQuote(${r.rowIndex}, '${r.basicQuote||''}')">💰 견적: ${r.basicQuote||'미설정'} (클릭수정)</div>` : "";
+                let docs = `${r.fileBiz?`<a href="${r.fileBiz}" target="_blank" class="text-blue-500 text-xs block">📄 사업자</a>`:''} ${r.fileHealth?`<a href="${r.fileHealth}" target="_blank" class="text-green-600 text-xs block">🏥 보건증</a>`:''}`;
+                let btns = currentRole==='super_admin' ? 
+                    `<button onclick="approve('${r.name}', ${r.rowIndex})" class="bg-green-600 text-white px-2 py-1 rounded text-xs mb-1 w-full">승인(계정생성)</button>
+                     <button onclick="del(${r.rowIndex})" class="text-red-500 text-xs">삭제</button>` : '';
+                if(isApp && currentRole==='super_admin') btns = `<span class="text-blue-600 font-bold text-xs">승인됨</span> <button onclick="del(${r.rowIndex})" class="text-red-500 text-xs ml-2">삭제</button>`;
 
-                list.innerHTML += `
-                <tr class="hover:bg-gray-50 border-b border-gray-100">
-                    <td class="px-6 py-4"><span class="px-2 py-1 text-[10px] font-bold rounded ${isApp?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${r.status}</span></td>
-                    <td class="px-6 py-4"><div class="font-bold text-gray-900">${r.name}</div><div class="text-xs text-gray-500">${subInfo}</div><div class="text-xs text-gray-400 mt-1">📍 ${r.region}</div></td>
-                    <td class="px-6 py-4">${docs} ${quoteEdit}</td>
-                    <td class="px-6 py-4 text-center">${btns}</td>
-                </tr>`;
+                list.innerHTML += `<tr class="hover:bg-gray-50 border-b"><td class="px-6 py-4"><span class="px-2 py-1 text-[10px] bg-gray-100 rounded">${r.status}</span></td><td class="px-6 py-4"><div class="font-bold">${r.name}</div><div class="text-xs">${r.owner}/${r.phone}</div></td><td class="px-6 py-4">${docs}</td><td class="px-6 py-4 text-center">${btns}</td></tr>`;
             });
         }
 
         function showQuotes() {
             resetTabs('btnQuote');
-            const list = document.getElementById('list'); list.innerHTML = '';
-            // 파트너는 본인 트럭 이름이나 '상관없음' 견적만
-            const filtered = quoteData.filter(q => currentRole==='super_admin' || q.details.includes(userName) || q.details.includes('상관없음')); 
-
+            document.getElementById('listContainer').classList.remove('hidden');
+            document.getElementById('myInfoForm').classList.add('hidden');
+            const list = document.getElementById('list'); list.innerHTML='';
+            const filtered = quoteData.filter(q => currentRole==='super_admin' || q.targetTruck===userName || q.targetTruck==='상관없음');
+            
             filtered.forEach(q => {
                 const isPending = q.status === '대기';
-                let btns = isPending ? 
-                    `<button onclick="processQuote(${q.rowIndex}, '승인', '${q.details}', '${q.client}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700">승낙 (계약서발송)</button>
-                     <button onclick="processQuote(${q.rowIndex}, '거절', '', '')" class="bg-red-100 text-red-500 px-3 py-1 rounded text-xs hover:bg-red-200 ml-1">거절</button>` 
-                    : `<span class="font-bold ${q.status==='승인'?'text-blue-600':'text-red-500'}">${q.status}됨</span>`;
-
-                list.innerHTML += `
-                <tr class="hover:bg-gray-50 border-b border-gray-100">
-                    <td class="px-6 py-4"><span class="text-xs text-gray-400">${q.date.split('오')[0]}</span><br><span class="font-bold text-gray-800">${q.client}</span></td>
-                    <td class="px-6 py-4"><div class="text-sm font-bold">📅 ${q.eventDate}</div><div class="text-xs text-gray-500">${q.loc} / ${q.budget}</div><div class="text-xs text-gray-500">📞 ${q.phone}</div></td>
-                    <td class="px-6 py-4"><div class="text-xs bg-gray-100 p-2 rounded text-gray-700 whitespace-pre-wrap">${q.details}</div></td>
-                    <td class="px-6 py-4 text-center align-middle">${btns}</td>
-                </tr>`;
+                let btns = isPending ? `<button onclick="processQuote(${q.rowIndex},'승인','${q.details}','${q.client}')" class="bg-blue-600 text-white px-2 py-1 rounded text-xs">승낙</button> <button onclick="processQuote(${q.rowIndex},'거절','')" class="bg-red-100 text-red-500 px-2 py-1 rounded text-xs">거절</button>` : `<span class="font-bold text-blue-600">${q.status}됨</span>`;
+                list.innerHTML += `<tr class="hover:bg-gray-50 border-b"><td class="px-6 py-4"><span class="text-xs text-gray-400">${q.date.split('오')[0]}</span><br><b>${q.client}</b></td><td class="px-6 py-4"><div class="text-sm font-bold">📅 ${q.eventDate}</div><div class="text-xs">${q.loc}</div></td><td class="px-6 py-4"><div class="text-xs bg-gray-50 p-2 rounded whitespace-pre-wrap">${q.details}</div></td><td class="px-6 py-4 text-center">${btns}</td></tr>`;
             });
         }
 
-        function update(rowIndex, subAction, value) {
-            if(!confirm('처리하시겠습니까?')) return;
-            fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_update', subAction, rowIndex, value }) }).then(() => loadData());
+        function approve(name, rowIndex) {
+            const newId = prompt(`'${name}' 사장님 아이디 생성`); if(!newId) return;
+            const newPw = prompt(`비밀번호 생성`); if(!newPw) return;
+            showLoad();
+            fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_approve', rowIndex, newId, newPw, name }) }).then(r=>r.json()).then(res=>{ hideLoad(); alert(res.msg); loadData(); });
         }
-        function updateQuote(rowIndex, currentVal) {
-            const val = prompt("기본 견적 입력", currentVal);
-            if(val !== null) update(rowIndex, 'update_quote', val);
-        }
+        
         function processQuote(rowIndex, decision, details, clientName) {
             let clientEmail = "";
-            if(details.includes("이메일:")) clientEmail = details.split("이메일:")[1].trim();
+            if(details.includes("이메일:")) clientEmail = details.split("이메일:")[1].split(")")[0].trim();
             if(!confirm(`${decision} 하시겠습니까?`)) return;
-            fetch(API_URL, { 
-                method: 'POST', 
-                body: JSON.stringify({ action: 'quote_approval', rowIndex, decision, truckName: userName, clientEmail }) 
-            }).then(r => { alert(r.msg || '완료'); loadData(); });
+            showLoad();
+            fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'quote_approval', rowIndex, decision, truckName: userName, clientEmail }) }).then(r => { hideLoad(); alert(r.msg); loadData(); });
         }
-        function resetTabs(...ids) {
-            ['btnTruck','btnStaff','btnQuote'].forEach(id => {
-                const el = document.getElementById(id); if(el) el.className = "whitespace-nowrap px-4 py-2 bg-white text-gray-600 border rounded-lg font-bold";
-            });
-            if(ids.length && ids[0]) document.getElementById(ids[0]).className = "whitespace-nowrap px-4 py-2 bg-gray-800 text-white rounded-lg font-bold";
+
+        function del(idx) { if(confirm('삭제하시겠습니까?')) fetch(API_URL, { method:'POST', body:JSON.stringify({action:'delete_partner', rowIndex:idx})}).then(()=>loadData()); }
+        
+        function openMyInfo(){ document.getElementById('listContainer').classList.add('hidden'); document.getElementById('myInfoForm').classList.remove('hidden'); }
+        async function submitUpdate() {
+            const p = { action:'partner_update', rowIndex:partnerRow, desc:document.getElementById('editDesc').value, basicQuote:document.getElementById('editQuote').value };
+            p.img2 = await toBase64(document.getElementById('img2').files[0]);
+            p.img3 = await toBase64(document.getElementById('img3').files[0]);
+            p.img4 = await toBase64(document.getElementById('img4').files[0]);
+            p.img5 = await toBase64(document.getElementById('img5').files[0]);
+            showLoad(); fetch(API_URL, {method:'POST', body:JSON.stringify(p)}).then(r=>r.json()).then(res=>{ hideLoad(); alert(res.msg); });
         }
+
+        function searchTable() {
+            const filter = document.getElementById("searchInput").value.toUpperCase();
+            const tr = document.getElementById("list").getElementsByTagName("tr");
+            for (let i=0; i<tr.length; i++) tr[i].style.display = (tr[i].textContent.toUpperCase().indexOf(filter) > -1) ? "" : "none";
+        }
+
+        function resetTabs(...ids){ ['btnTruck','btnStaff','btnQuote','btnMyInfo'].forEach(id=>{const el=document.getElementById(id); if(el) el.className="whitespace-nowrap px-4 py-2 bg-white text-gray-600 border rounded-lg font-bold";}); if(ids.length) document.getElementById(ids[0]).className="whitespace-nowrap px-4 py-2 bg-gray-800 text-white rounded-lg font-bold"; }
+        const toBase64 = file => new Promise(r => { if(!file)r(''); else {const rx=new FileReader(); rx.onload=e=>r(e.target.result); rx.readAsDataURL(file);} });
     </script>
 </body>
 </html>
