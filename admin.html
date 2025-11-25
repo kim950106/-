@@ -7,17 +7,16 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
     <style>
         body { font-family: "Pretendard Variable", sans-serif; }
-        /* 탭 스타일 정의 (JS에서 클래스 통째로 교체하지 않기 위함) */
         .tab-base { white-space: nowrap; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 700; transition: all 0.2s; border: 1px solid #E5E7EB; }
-        .tab-active { background-color: #1F2937; color: white; border-color: #1F2937; } /* 활성: 진한회색 */
-        .tab-inactive { background-color: white; color: #4B5563; } /* 비활성: 흰색 */
-        .tab-orange { background-color: #EA580C; color: white; border-color: #EA580C; } /* 주황색 버튼 */
+        .tab-active { background-color: #1F2937; color: white; border-color: #1F2937; }
+        .tab-inactive { background-color: white; color: #4B5563; }
+        .tab-orange { background-color: #EA580C; color: white; border-color: #EA580C; }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col items-center pt-10">
 
     <!-- 로딩 오버레이 -->
-    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black/50 z-50 flex justify-center items-center text-white font-bold">처리 중...</div>
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black/50 z-50 flex justify-center items-center text-white font-bold">데이터 불러오는 중...</div>
 
     <!-- 로그인 박스 -->
     <div id="loginBox" class="bg-white p-8 rounded-2xl shadow-xl w-96 text-center">
@@ -30,11 +29,15 @@
     <!-- 대시보드 화면 -->
     <div id="dashboard" class="hidden w-full max-w-7xl px-6 pb-20">
         <div class="flex justify-between items-center mb-6">
-            <div>
+            <div class="flex items-center gap-3">
                 <h1 class="text-2xl font-bold">통합 대시보드</h1>
                 <span id="roleBadge" class="text-xs bg-gray-200 px-2 py-1 rounded text-gray-600"></span>
+                <!-- [NEW] 데이터 새로고침 버튼 -->
+                <button onclick="loadData()" class="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 flex items-center gap-1">
+                    🔄 데이터 새로고침
+                </button>
             </div>
-            <button onclick="location.reload()" class="text-sm underline text-gray-500">로그아웃</button>
+            <button onclick="logout()" class="text-sm underline text-gray-500">로그아웃</button>
         </div>
 
         <!-- 탭 메뉴 -->
@@ -64,32 +67,28 @@
                         <th id="colAdmin" class="px-6 py-3 text-center w-32">관리</th>
                     </tr>
                 </thead>
-                <tbody id="list" class="divide-y divide-gray-100"></tbody>
+                <tbody id="list" class="divide-y divide-gray-100">
+                    <tr><td colspan="4" class="p-10 text-center text-gray-400">데이터를 불러오는 중입니다...</td></tr>
+                </tbody>
             </table>
         </div>
 
-        <!-- 내 정보 수정 폼 (파트너 전용) -->
+        <!-- 내 정보 수정 폼 -->
         <div id="myInfoForm" class="hidden bg-white p-6 rounded-xl shadow border border-gray-200">
+            <!-- (기존 수정 폼 내용 동일) -->
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-bold text-gray-800">내 푸드트럭 정보 수정</h3>
                 <button onclick="clickTab('quote')" class="text-sm text-gray-500 hover:text-black">✕ 닫기</button>
             </div>
-            
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div class="space-y-2">
-                    <label class="text-xs font-bold">추가 사진 등록 (기존 사진 덮어쓰기)</label>
+                    <label class="text-xs font-bold">추가 사진 등록</label>
                     <input type="file" id="img2" class="w-full text-xs border p-1 rounded"><input type="file" id="img3" class="w-full text-xs border p-1 rounded">
                     <input type="file" id="img4" class="w-full text-xs border p-1 rounded"><input type="file" id="img5" class="w-full text-xs border p-1 rounded">
                 </div>
                 <div class="space-y-4">
-                    <div>
-                        <label class="text-xs font-bold block mb-1">소개글</label>
-                        <textarea id="editDesc" rows="4" class="w-full border p-2 rounded text-sm outline-none focus:border-orange-500" placeholder="트럭 소개글을 입력하세요."></textarea>
-                    </div>
-                    <div>
-                        <label class="text-xs font-bold block mb-1">기본 견적 (고객에게 노출)</label>
-                        <input type="text" id="editQuote" class="w-full border p-2 rounded text-sm outline-none focus:border-orange-500" placeholder="예: 100인분 80만원부터 (미입력시 '별도문의')">
-                    </div>
+                    <div><label class="text-xs font-bold block mb-1">소개글</label><textarea id="editDesc" rows="4" class="w-full border p-2 rounded text-sm"></textarea></div>
+                    <div><label class="text-xs font-bold block mb-1">기본 견적</label><input type="text" id="editQuote" class="w-full border p-2 rounded text-sm"></div>
                 </div>
             </div>
             <button onclick="submitUpdate()" class="w-full bg-orange-600 text-white py-3 rounded-xl font-bold hover:bg-orange-700 transition">수정사항 저장하기</button>
@@ -98,13 +97,28 @@
 
     <script>
         // ⚠️ API URL 교체 필수
-        const API_URL = "https://script.google.com/macros/s/AKfycbyeFxb3e1jm4HW_MgNJcI94m1ECnIQb8KkwmiZzQmt-LWBzCS7ndSak7qDRCqDip-za/exec"; 
+        const API_URL = "YOUR_GOOGLE_SCRIPT_URL_HERE"; 
         
         let adminData = [], quoteData = [], currentRole = "", userName = "", partnerRow = 0;
+        let currentTab = ""; // 현재 보고 있는 탭 저장
+
         const showLoad = () => document.getElementById('loadingOverlay').classList.remove('hidden');
         const hideLoad = () => document.getElementById('loadingOverlay').classList.add('hidden');
 
-        // 1. 로그인
+        // [1] 페이지 로드 시 로그인 세션 확인 (30분 유지)
+        window.onload = function() {
+            const session = JSON.parse(localStorage.getItem('adminSession'));
+            if (session && new Date().getTime() < session.expiry) {
+                // 세션 유효함 -> 자동 로그인
+                currentRole = session.role;
+                userName = session.name;
+                partnerRow = session.partnerRow;
+                initDashboard();
+                loadData();
+            }
+        };
+
+        // [2] 로그인 처리 및 세션 저장
         function login() {
             const id = document.getElementById('uid').value, pw = document.getElementById('upw').value;
             showLoad();
@@ -113,85 +127,91 @@
                 hideLoad();
                 if(res.status === 'success') {
                     currentRole = res.role; userName = res.name; partnerRow = res.partnerRow;
-                    document.getElementById('loginBox').classList.add('hidden');
-                    document.getElementById('dashboard').classList.remove('hidden');
-                    document.getElementById('roleBadge').innerText = `${userName} (${currentRole==='super_admin'?'관리자':'파트너'})`;
                     
-                    // 권한별 탭 노출 설정 (hidden 클래스 제어)
-                    if(currentRole === 'partner_admin') {
-                        document.getElementById('btnQuote').classList.remove('hidden');
-                        document.getElementById('btnStaff').classList.remove('hidden');
-                        document.getElementById('btnMyInfo').classList.remove('hidden');
-                        document.getElementById('colAdmin').classList.add('hidden'); // 관리 열 숨김
-                        clickTab('quote'); // 초기 탭
-                    } else {
-                        document.getElementById('btnTruck').classList.remove('hidden');
-                        document.getElementById('btnStaff').classList.remove('hidden');
-                        document.getElementById('btnQuote').classList.remove('hidden');
-                        clickTab('truck'); // 초기 탭
-                    }
+                    // 세션 저장 (30분 = 1800000ms)
+                    const expiry = new Date().getTime() + 30 * 60 * 1000;
+                    localStorage.setItem('adminSession', JSON.stringify({ role: currentRole, name: userName, partnerRow: partnerRow, expiry: expiry }));
                     
-                    // 데이터 로드
+                    initDashboard();
                     loadData();
                 } else alert(res.msg);
             });
         }
 
-        // 2. 데이터 로드
+        function logout() {
+            localStorage.removeItem('adminSession');
+            location.reload();
+        }
+
+        // [3] 대시보드 초기화 (권한별 UI)
+        function initDashboard() {
+            document.getElementById('loginBox').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('roleBadge').innerText = `${userName} (${currentRole==='super_admin'?'관리자':'파트너'})`;
+
+            if(currentRole === 'partner_admin') {
+                document.getElementById('btnQuote').classList.remove('hidden');
+                document.getElementById('btnStaff').classList.remove('hidden');
+                document.getElementById('btnMyInfo').classList.remove('hidden');
+                document.getElementById('colAdmin').classList.add('hidden');
+                currentTab = 'quote';
+            } else {
+                document.getElementById('btnTruck').classList.remove('hidden');
+                document.getElementById('btnStaff').classList.remove('hidden');
+                document.getElementById('btnQuote').classList.remove('hidden');
+                currentTab = 'truck';
+            }
+        }
+
+        // [4] 데이터 로드 (새로고침 시 호출됨)
         function loadData() {
+            showLoad();
             fetch(`${API_URL}?mode=admin`).then(r => r.json()).then(res => {
-                adminData = res.data; quoteData = res.quotes;
-                // 현재 활성화된 탭 새로고침 (데이터 갱신 시)
-                const activeTab = document.querySelector('.tab-active');
-                if(activeTab) activeTab.click();
+                hideLoad();
+                adminData = res.data; 
+                quoteData = res.quotes;
+                // 데이터 로드 후 현재 탭 다시 그리기
+                clickTab(currentTab);
+            }).catch(() => {
+                hideLoad();
+                alert('데이터를 불러오지 못했습니다.');
             });
         }
 
-        // 3. 탭 클릭 핸들러 (UI 제어 통합)
+        // [5] 탭 클릭 및 렌더링 분기
         function clickTab(tabName) {
-            // 검색창 초기화
+            currentTab = tabName;
             document.getElementById('searchInput').value = '';
             
-            // 탭 스타일 초기화
+            // 스타일 초기화
             ['btnTruck', 'btnStaff', 'btnQuote'].forEach(id => {
-                document.getElementById(id).classList.remove('tab-active');
-                document.getElementById('id').classList.add('tab-inactive');
+                const el = document.getElementById(id);
+                if(el) { el.classList.remove('tab-active'); el.classList.add('tab-inactive'); }
             });
 
-            // 컨텐츠 영역 제어
             const listContainer = document.getElementById('listContainer');
             const myInfoForm = document.getElementById('myInfoForm');
             const searchBox = document.getElementById('searchBox');
 
             if(tabName === 'myinfo') {
-                listContainer.classList.add('hidden');
-                searchBox.classList.add('hidden');
-                myInfoForm.classList.remove('hidden');
+                listContainer.classList.add('hidden'); searchBox.classList.add('hidden'); myInfoForm.classList.remove('hidden');
             } else {
-                listContainer.classList.remove('hidden');
-                searchBox.classList.remove('hidden');
-                myInfoForm.classList.add('hidden');
+                listContainer.classList.remove('hidden'); searchBox.classList.remove('hidden'); myInfoForm.classList.add('hidden');
                 
-                // 버튼 활성화 스타일 적용
                 const btnId = tabName === 'truck' ? 'btnTruck' : (tabName === 'staff' ? 'btnStaff' : 'btnQuote');
                 const btn = document.getElementById(btnId);
-                if(btn) {
-                    btn.classList.remove('tab-inactive');
-                    btn.classList.add('tab-active');
-                }
+                if(btn) { btn.classList.remove('tab-inactive'); btn.classList.add('tab-active'); }
 
-                // 데이터 렌더링 호출
                 if(tabName === 'quote') renderQuotes();
                 else renderList(tabName === 'truck' ? '푸드트럭' : '인력');
             }
         }
 
-        // 4. 리스트 렌더링 (트럭/인력)
+        // [6] 리스트 렌더링 (트럭/인력)
         function renderList(cat) {
             const list = document.getElementById('list'); list.innerHTML = '';
             let filtered = adminData.filter(d => d.category === cat);
 
-            // 파트너는 '인력' 탭에서 '승인된 인력'만 볼 수 있음
             if(currentRole === 'partner_admin' && cat === '인력') {
                 filtered = filtered.filter(d => d.status === '승인');
             }
@@ -218,9 +238,7 @@
                 if(currentRole === 'super_admin') {
                     btns = `<button onclick="update(${r.rowIndex},'status','${isApp?'대기':'승인'}')" class="bg-gray-800 text-white px-2 py-1 rounded text-xs mr-1">${isApp?'취소':'승인'}</button>
                             <button onclick="update(${r.rowIndex},'delete','')" class="text-red-500 text-xs underline">삭제</button>`;
-                    if(isApp && currentRole==='super_admin' && cat==='푸드트럭') {
-                        btns = `<button onclick="approveAccount('${r.name}', ${r.rowIndex})" class="bg-green-600 text-white px-2 py-1 rounded text-xs w-full mb-1">계정생성</button>` + btns;
-                    }
+                    if(isApp && cat==='푸드트럭') btns = `<button onclick="approveAccount('${r.name}', ${r.rowIndex})" class="bg-green-600 text-white px-2 py-1 rounded text-xs w-full mb-1">계정생성</button>` + btns;
                 }
 
                 list.innerHTML += `
@@ -233,7 +251,7 @@
             });
         }
 
-        // 5. 견적 리스트 렌더링
+        // [7] 견적 렌더링
         function renderQuotes() {
             const list = document.getElementById('list'); list.innerHTML = '';
             let myQuotes = quoteData;
@@ -241,11 +259,9 @@
                 myQuotes = quoteData.filter(q => q.targetTruck === '상관없음' || q.targetTruck === userName);
             }
 
-            // 뱃지 업데이트
             const pendingCnt = myQuotes.filter(q => q.status === '대기').length;
             const badge = document.getElementById('quoteBadge');
-            if(pendingCnt > 0) { badge.innerText = pendingCnt; badge.classList.remove('hidden'); } 
-            else badge.classList.add('hidden');
+            if(pendingCnt > 0) { badge.innerText = pendingCnt; badge.classList.remove('hidden'); } else badge.classList.add('hidden');
 
             if(myQuotes.length === 0) { list.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-400">접수된 견적이 없습니다.</td></tr>'; return; }
 
@@ -265,26 +281,15 @@
 
                 list.innerHTML += `
                 <tr class="hover:bg-gray-50 border-b border-gray-100 ${isPending?'bg-orange-50/30':''}">
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        ${targetBadge}<br>
-                        <span class="text-xs text-gray-400">${q.date.split('오')[0]}</span>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="font-bold text-gray-800">${q.client}</div>
-                        <div class="text-sm mt-1">📅 ${q.eventDate} / ${q.loc}</div>
-                        <div class="text-xs text-gray-500 mt-1">예산: ${q.budget}</div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="text-xs bg-white border p-3 rounded-lg text-gray-700 whitespace-pre-wrap leading-relaxed">${q.details}</div>
-                    </td>
-                    <td class="px-6 py-4 text-center align-middle">
-                        ${btns}
-                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">${targetBadge}<br><span class="text-xs text-gray-400">${q.date.split('오')[0]}</span></td>
+                    <td class="px-6 py-4"><div class="font-bold text-gray-800">${q.client}</div><div class="text-sm mt-1">📅 ${q.eventDate} / ${q.loc}</div><div class="text-xs text-gray-500 mt-1">예산: ${q.budget}</div></td>
+                    <td class="px-6 py-4"><div class="text-xs bg-white border p-3 rounded-lg text-gray-700 whitespace-pre-wrap leading-relaxed">${q.details}</div></td>
+                    <td class="px-6 py-4 text-center align-middle">${btns}</td>
                 </tr>`;
             });
         }
 
-        // 기능 함수들
+        // [기능 함수들]
         function update(rowIndex, subAction, value) {
             if(!confirm('처리하시겠습니까?')) return;
             fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_update', subAction, rowIndex, value }) }).then(() => loadData());
@@ -293,18 +298,14 @@
             const newId = prompt(`'${name}' 사장님 아이디 생성`); if(!newId) return;
             const newPw = prompt(`비밀번호 생성`); if(!newPw) return;
             showLoad();
-            fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_approve', rowIndex, newId, newPw, name }) })
-            .then(r=>r.json()).then(res=>{ hideLoad(); alert(res.msg); loadData(); });
+            fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_approve', rowIndex, newId, newPw, name }) }).then(r=>r.json()).then(res=>{ hideLoad(); alert(res.msg); loadData(); });
         }
         function processQuote(rowIndex, decision, details, clientName) {
             let clientEmail = "";
             if(details && details.includes("이메일:")) clientEmail = details.split("이메일:")[1].split(")")[0].trim();
             if(!confirm(`${decision} 하시겠습니까?`)) return;
             showLoad();
-            fetch(API_URL, { 
-                method: 'POST', 
-                body: JSON.stringify({ action: 'quote_approval', rowIndex, decision, truckName: userName, clientEmail }) 
-            }).then(r => { hideLoad(); alert(r.msg); loadData(); });
+            fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'quote_approval', rowIndex, decision, truckName: userName, clientEmail }) }).then(r => { hideLoad(); alert(r.msg); loadData(); });
         }
         function openMyInfo() { clickTab('myinfo'); }
         async function submitUpdate() {
