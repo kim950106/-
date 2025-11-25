@@ -18,27 +18,20 @@
 
     <div id="dashboard" class="hidden w-full max-w-7xl px-6 pb-20">
         <div class="flex justify-between items-center mb-6">
-            <div>
-                <h1 class="text-2xl font-bold">통합 대시보드</h1>
-                <span id="roleBadge" class="text-xs bg-gray-200 px-2 py-1 rounded text-gray-600"></span>
-            </div>
+            <div><h1 class="text-2xl font-bold">대시보드</h1><span id="roleBadge" class="text-xs bg-gray-200 px-2 py-1 rounded"></span></div>
             <button onclick="location.reload()" class="text-sm underline">로그아웃</button>
         </div>
 
-        <div class="flex gap-2 mb-4">
-            <button onclick="filterAdmin('푸드트럭')" id="btnTruck" class="px-4 py-2 bg-gray-800 text-white rounded-lg font-bold">🚛 푸드트럭</button>
-            <button onclick="filterAdmin('인력')" id="btnStaff" class="px-4 py-2 bg-white text-gray-600 border rounded-lg font-bold">🧑‍🍳 인력 현황</button>
+        <div class="flex gap-2 mb-4 overflow-x-auto">
+            <button onclick="filterAdmin('푸드트럭')" id="btnTruck" class="whitespace-nowrap px-4 py-2 bg-gray-800 text-white rounded-lg font-bold">🚛 트럭 관리</button>
+            <button onclick="filterAdmin('인력')" id="btnStaff" class="whitespace-nowrap px-4 py-2 bg-white text-gray-600 border rounded-lg font-bold">🧑‍🍳 인력 현황</button>
+            <button onclick="showQuotes()" id="btnQuote" class="whitespace-nowrap px-4 py-2 bg-white text-gray-600 border rounded-lg font-bold">📩 받은 견적</button>
         </div>
 
         <div class="bg-white rounded-xl shadow overflow-hidden">
             <table class="w-full text-left text-sm text-gray-600">
                 <thead class="bg-gray-100 text-gray-800 uppercase font-bold text-xs">
-                    <tr>
-                        <th class="px-6 py-3">상태</th>
-                        <th class="px-6 py-3">정보</th>
-                        <th class="px-6 py-3">서류</th>
-                        <th id="colAdmin" class="px-6 py-3 text-center">관리</th>
-                    </tr>
+                    <tr><th class="px-6 py-3">상태</th><th class="px-6 py-3">정보</th><th class="px-6 py-3">내용/서류</th><th id="colAdmin" class="px-6 py-3 text-center">관리</th></tr>
                 </thead>
                 <tbody id="list" class="divide-y divide-gray-100"></tbody>
             </table>
@@ -47,24 +40,17 @@
 
     <script>
         const API_URL = "YOUR_GOOGLE_SCRIPT_URL_HERE"; // ⚠️ URL 교체
-        let adminData = [];
-        let currentRole = "";
+        let adminData = [], quoteData = [], currentRole = "", userName = "";
 
         function login() {
-            const id = document.getElementById('uid').value;
-            const pw = document.getElementById('upw').value;
+            const id = document.getElementById('uid').value, pw = document.getElementById('upw').value;
             fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'login', id, pw }) })
             .then(r=>r.json()).then(res => {
                 if(res.status==='success') {
-                    currentRole = res.role;
+                    currentRole = res.role; userName = res.name;
                     document.getElementById('loginBox').classList.add('hidden');
                     document.getElementById('dashboard').classList.remove('hidden');
-                    document.getElementById('roleBadge').innerText = currentRole==='super_admin' ? "슈퍼 관리자" : "파트너 사장님";
-                    
-                    if(currentRole === 'partner_admin') {
-                        document.getElementById('btnTruck').classList.add('hidden');
-                        document.getElementById('colAdmin').classList.add('hidden');
-                    }
+                    document.getElementById('roleBadge').innerText = `${userName} (${currentRole==='super_admin'?'슈퍼관리자':'파트너'})`;
                     loadData();
                 } else alert(res.msg);
             });
@@ -72,61 +58,89 @@
 
         function loadData() {
             fetch(`${API_URL}?mode=admin`).then(r=>r.json()).then(res => {
-                adminData = res.data;
-                filterAdmin(currentRole === 'partner_admin' ? '인력' : '푸드트럭');
+                adminData = res.data; quoteData = res.quotes;
+                if(currentRole==='partner_admin') {
+                    document.getElementById('btnTruck').classList.add('hidden');
+                    document.getElementById('btnStaff').classList.add('hidden'); 
+                    showQuotes(); 
+                } else {
+                    filterAdmin('푸드트럭');
+                }
             });
         }
 
         function filterAdmin(cat) {
-            if(currentRole === 'super_admin') {
-                const btnT = document.getElementById('btnTruck');
-                const btnS = document.getElementById('btnStaff');
-                if(cat==='푸드트럭') { btnT.className="px-4 py-2 bg-gray-800 text-white rounded-lg font-bold"; btnS.className="px-4 py-2 bg-white text-gray-600 border rounded-lg font-bold"; }
-                else { btnS.className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold"; btnT.className="px-4 py-2 bg-white text-gray-600 border rounded-lg font-bold"; }
-            }
-
-            const list = document.getElementById('list');
-            list.innerHTML = '';
-            
+            resetTabs('btnTruck', 'btnStaff');
+            const list = document.getElementById('list'); list.innerHTML = '';
             let filtered = adminData.filter(d => d.category === cat);
-            if(currentRole === 'partner_admin') filtered = filtered.filter(d => d.status === '승인');
-
-            if(filtered.length === 0) { list.innerHTML = '<tr><td colspan="4" class="p-6 text-center">데이터 없음</td></tr>'; return; }
-
+            
             filtered.forEach(r => {
                 const isApp = r.status === '승인';
+                let docs = `${r.bizUrl?`<a href="${r.bizUrl}" target="_blank" class="text-blue-500 underline block text-xs">📄 사업자</a>`:''} ${r.otherUrl?`<a href="${r.otherUrl}" target="_blank" class="text-green-600 underline block text-xs">🏥 보건증</a>`:''}`;
                 let subInfo = r.category==='인력' ? `<span class="text-blue-600 font-bold">${r.age}세</span> / 📅 ${r.dates}` : `${r.owner} / ${r.phone}`;
                 
-                // 파트너에겐 인력의 연락처 보임
-                if(currentRole === 'partner_admin' && r.category==='인력') subInfo += `<br>📞 ${r.phone}`;
-
-                let docs = "";
-                if(currentRole === 'super_admin') {
-                    docs = `${r.bizUrl?`<a href="${r.bizUrl}" target="_blank" class="text-blue-500 underline text-xs block">📄 사업자</a>`:''} ${r.otherUrl?`<a href="${r.otherUrl}" target="_blank" class="text-green-600 underline text-xs block">🏥 보건증</a>`:''}`;
-                } else {
-                    docs = r.otherUrl ? `<a href="${r.otherUrl}" target="_blank" class="text-green-600 font-bold text-xs">✅ 보건증 확인</a>` : `<span class="text-gray-300 text-xs">미등록</span>`;
+                let btns = "";
+                if(currentRole==='super_admin') {
+                    btns = `<button onclick="update(${r.rowIndex}, 'status', '${isApp?'대기':'승인'}')" class="bg-gray-800 text-white px-3 py-1 rounded text-xs">${isApp?'취소':'승인'}</button>
+                            <button onclick="update(${r.rowIndex}, 'delete', '')" class="text-red-500 underline text-xs ml-2">삭제</button>`;
                 }
-
-                const btns = currentRole === 'super_admin' ? `
-                    <td class="px-6 py-4 text-center whitespace-nowrap">
-                        <button onclick="update(${r.rowIndex}, 'status', '${isApp?'대기':'승인'}')" class="bg-gray-800 text-white px-3 py-1 rounded text-xs">${isApp?'취소':'승인'}</button>
-                        <button onclick="update(${r.rowIndex}, 'delete', '')" class="text-red-500 underline text-xs ml-2">삭제</button>
-                    </td>` : `<td class="hidden"></td>`;
+                let quoteEdit = (cat === '푸드트럭') ? `<div class="text-xs text-gray-400 mt-1 cursor-pointer hover:text-orange-500" onclick="updateQuote(${r.rowIndex}, '${r.basicQuote||''}')">💰 견적: ${r.basicQuote||'미설정'} (클릭수정)</div>` : "";
 
                 list.innerHTML += `
                 <tr class="hover:bg-gray-50 border-b border-gray-100">
                     <td class="px-6 py-4"><span class="px-2 py-1 text-[10px] font-bold rounded ${isApp?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${r.status}</span></td>
-                    <td class="px-6 py-4"><div class="font-bold text-gray-900">${r.name}</div><div class="text-sm mt-1">${subInfo}</div><div class="text-xs text-gray-500 mt-1">📍 ${r.region}</div></td>
-                    <td class="px-6 py-4">${docs}</td>
-                    ${btns}
+                    <td class="px-6 py-4"><div class="font-bold text-gray-900">${r.name}</div><div class="text-xs text-gray-500">${subInfo}</div><div class="text-xs text-gray-400 mt-1">📍 ${r.region}</div></td>
+                    <td class="px-6 py-4">${docs} ${quoteEdit}</td>
+                    <td class="px-6 py-4 text-center">${btns}</td>
+                </tr>`;
+            });
+        }
+
+        function showQuotes() {
+            resetTabs('btnQuote');
+            const list = document.getElementById('list'); list.innerHTML = '';
+            // 파트너는 본인 트럭 이름이나 '상관없음' 견적만
+            const filtered = quoteData.filter(q => currentRole==='super_admin' || q.details.includes(userName) || q.details.includes('상관없음')); 
+
+            filtered.forEach(q => {
+                const isPending = q.status === '대기';
+                let btns = isPending ? 
+                    `<button onclick="processQuote(${q.rowIndex}, '승인', '${q.details}', '${q.client}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700">승낙 (계약서발송)</button>
+                     <button onclick="processQuote(${q.rowIndex}, '거절', '', '')" class="bg-red-100 text-red-500 px-3 py-1 rounded text-xs hover:bg-red-200 ml-1">거절</button>` 
+                    : `<span class="font-bold ${q.status==='승인'?'text-blue-600':'text-red-500'}">${q.status}됨</span>`;
+
+                list.innerHTML += `
+                <tr class="hover:bg-gray-50 border-b border-gray-100">
+                    <td class="px-6 py-4"><span class="text-xs text-gray-400">${q.date.split('오')[0]}</span><br><span class="font-bold text-gray-800">${q.client}</span></td>
+                    <td class="px-6 py-4"><div class="text-sm font-bold">📅 ${q.eventDate}</div><div class="text-xs text-gray-500">${q.loc} / ${q.budget}</div><div class="text-xs text-gray-500">📞 ${q.phone}</div></td>
+                    <td class="px-6 py-4"><div class="text-xs bg-gray-100 p-2 rounded text-gray-700 whitespace-pre-wrap">${q.details}</div></td>
+                    <td class="px-6 py-4 text-center align-middle">${btns}</td>
                 </tr>`;
             });
         }
 
         function update(rowIndex, subAction, value) {
             if(!confirm('처리하시겠습니까?')) return;
-            fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_update', subAction, rowIndex, value }) })
-            .then(() => loadData());
+            fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_update', subAction, rowIndex, value }) }).then(() => loadData());
+        }
+        function updateQuote(rowIndex, currentVal) {
+            const val = prompt("기본 견적 입력", currentVal);
+            if(val !== null) update(rowIndex, 'update_quote', val);
+        }
+        function processQuote(rowIndex, decision, details, clientName) {
+            let clientEmail = "";
+            if(details.includes("이메일:")) clientEmail = details.split("이메일:")[1].trim();
+            if(!confirm(`${decision} 하시겠습니까?`)) return;
+            fetch(API_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: 'quote_approval', rowIndex, decision, truckName: userName, clientEmail }) 
+            }).then(r => { alert(r.msg || '완료'); loadData(); });
+        }
+        function resetTabs(...ids) {
+            ['btnTruck','btnStaff','btnQuote'].forEach(id => {
+                const el = document.getElementById(id); if(el) el.className = "whitespace-nowrap px-4 py-2 bg-white text-gray-600 border rounded-lg font-bold";
+            });
+            if(ids.length && ids[0]) document.getElementById(ids[0]).className = "whitespace-nowrap px-4 py-2 bg-gray-800 text-white rounded-lg font-bold";
         }
     </script>
 </body>
