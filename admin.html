@@ -2,137 +2,132 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>관리자 페이지 - 전북푸드커넥트</title>
+    <title>전북푸드커넥트 어드민</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
     <style>body { font-family: "Pretendard Variable", sans-serif; }</style>
 </head>
-<body class="bg-gray-50 min-h-screen flex flex-col items-center pt-20">
+<body class="bg-gray-50 min-h-screen flex flex-col items-center pt-10">
 
-    <!-- 1. 로그인 화면 -->
     <div id="loginBox" class="bg-white p-8 rounded-2xl shadow-xl w-96 text-center">
-        <h1 class="text-xl font-bold mb-6 text-gray-800">🔒 관리자 로그인</h1>
-        <input type="text" id="uid" placeholder="아이디" class="w-full mb-3 p-3 bg-gray-50 border rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-gray-200 transition">
-        <input type="password" id="upw" placeholder="비밀번호" class="w-full mb-4 p-3 bg-gray-50 border rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-gray-200 transition">
-        <button onclick="login()" class="w-full bg-gray-900 text-white py-3 rounded-xl font-bold hover:bg-black transition">접속하기</button>
+        <h1 class="text-xl font-bold mb-6">🔒 관리자 접속</h1>
+        <input type="text" id="uid" placeholder="ID" class="w-full mb-3 p-3 border rounded-lg">
+        <input type="password" id="upw" placeholder="PW" class="w-full mb-4 p-3 border rounded-lg">
+        <button onclick="login()" class="w-full bg-gray-900 text-white p-3 rounded-lg font-bold">로그인</button>
     </div>
 
-    <!-- 2. 대시보드 화면 (로그인 성공 시 보임) -->
-    <div id="dashboard" class="hidden w-full max-w-6xl px-6 pb-20">
+    <div id="dashboard" class="hidden w-full max-w-7xl px-6 pb-20">
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold text-gray-800">🛠️ 파트너 승인 관리</h1>
-            <button onclick="logout()" class="text-xs text-red-500 underline hover:text-red-700">로그아웃</button>
+            <div>
+                <h1 class="text-2xl font-bold">통합 대시보드</h1>
+                <span id="roleBadge" class="text-xs bg-gray-200 px-2 py-1 rounded text-gray-600"></span>
+            </div>
+            <button onclick="location.reload()" class="text-sm underline">로그아웃</button>
         </div>
 
-        <div class="bg-white rounded-xl shadow overflow-hidden border border-gray-100">
+        <div class="flex gap-2 mb-4">
+            <button onclick="filterAdmin('푸드트럭')" id="btnTruck" class="px-4 py-2 bg-gray-800 text-white rounded-lg font-bold">🚛 푸드트럭</button>
+            <button onclick="filterAdmin('인력')" id="btnStaff" class="px-4 py-2 bg-white text-gray-600 border rounded-lg font-bold">🧑‍🍳 인력 현황</button>
+        </div>
+
+        <div class="bg-white rounded-xl shadow overflow-hidden">
             <table class="w-full text-left text-sm text-gray-600">
                 <thead class="bg-gray-100 text-gray-800 uppercase font-bold text-xs">
                     <tr>
-                        <th class="px-6 py-3">신청일 / 상태</th>
-                        <th class="px-6 py-3">업체 정보</th>
-                        <th class="px-6 py-3">증빙서류 (클릭)</th>
-                        <th class="px-6 py-3 text-center">관리</th>
+                        <th class="px-6 py-3">상태</th>
+                        <th class="px-6 py-3">정보</th>
+                        <th class="px-6 py-3">서류</th>
+                        <th id="colAdmin" class="px-6 py-3 text-center">관리</th>
                     </tr>
                 </thead>
-                <tbody id="list" class="divide-y divide-gray-100">
-                    <tr><td colspan="4" class="px-6 py-10 text-center text-gray-400">데이터를 불러오는 중...</td></tr>
-                </tbody>
+                <tbody id="list" class="divide-y divide-gray-100"></tbody>
             </table>
         </div>
     </div>
 
     <script>
-        // ✅ 사용자가 제공한 배포 URL 적용
-        const API_URL = "https://script.google.com/macros/s/AKfycbxrDp_5zX6nPn63w4tx8VqVUh2669tfpaWTPJ19OeMEw0r4PkHtNqUb3zWViexnZzUi/exec";
+        const API_URL = "YOUR_GOOGLE_SCRIPT_URL_HERE"; // ⚠️ URL 교체
+        let adminData = [];
+        let currentRole = "";
 
-        // [로그인] Config 시트의 ID/PW와 대조
         function login() {
             const id = document.getElementById('uid').value;
             const pw = document.getElementById('upw').value;
-            
-            if(!id || !pw) return alert('아이디와 비밀번호를 입력하세요.');
-
-            fetch(API_URL, { 
-                method: 'POST', 
-                body: JSON.stringify({ action: 'login', id: id, pw: pw }) 
-            })
-            .then(r => r.json())
-            .then(res => {
-                if(res.status === 'success') {
-                    // 로그인 성공
+            fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'login', id, pw }) })
+            .then(r=>r.json()).then(res => {
+                if(res.status==='success') {
+                    currentRole = res.role;
                     document.getElementById('loginBox').classList.add('hidden');
                     document.getElementById('dashboard').classList.remove('hidden');
-                    loadData(); // 데이터 불러오기
-                } else {
-                    alert(res.msg);
-                }
-            })
-            .catch(() => alert('서버 통신 오류'));
-        }
-
-        // [데이터 로드] 전체 파트너 신청 내역 가져오기
-        function loadData() {
-            fetch(`${API_URL}?mode=admin`).then(r => r.json()).then(res => {
-                const list = document.getElementById('list');
-                list.innerHTML = '';
-                
-                if(!res.data || res.data.length === 0) {
-                    list.innerHTML = '<tr><td colspan="4" class="px-6 py-10 text-center text-gray-400">신청 내역이 없습니다.</td></tr>';
-                    return;
-                }
-
-                res.data.forEach(r => {
-                    const isApp = r.status === '승인'; // 승인 여부 확인
+                    document.getElementById('roleBadge').innerText = currentRole==='super_admin' ? "슈퍼 관리자" : "파트너 사장님";
                     
-                    list.innerHTML += `
-                    <tr class="hover:bg-gray-50 transition">
-                        <td class="px-6 py-4 align-top">
-                            <div class="text-xs text-gray-400 mb-1">${r.time.split('오')[0]}</div>
-                            <span class="px-2 py-1 text-[10px] font-bold rounded ${isApp ? 'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${r.status}</span>
-                        </td>
-                        <td class="px-6 py-4 align-top">
-                            <div class="font-bold text-gray-900 text-lg">${r.truckName}</div>
-                            <div class="text-xs text-gray-500 mt-1">대표: ${r.owner} / ${r.phone}</div>
-                            <div class="text-xs text-gray-400 mt-1">${r.region} / ${r.menu}</div>
-                        </td>
-                        <td class="px-6 py-4 text-xs space-y-2 align-top">
-                            ${r.bizUrl ? `<a href="${r.bizUrl}" target="_blank" class="flex items-center text-blue-600 hover:text-blue-800 underline">📄 사업자증 보기</a>` : '<span class="text-gray-300">미첨부</span>'}
-                            ${r.bankUrl ? `<a href="${r.bankUrl}" target="_blank" class="flex items-center text-blue-600 hover:text-blue-800 underline">💰 통장사본 보기</a>` : '<span class="text-gray-300">미첨부</span>'}
-                        </td>
-                        <td class="px-6 py-4 text-center align-top">
-                            <div class="flex flex-col gap-2 items-center">
-                                ${!isApp ? 
-                                    `<button onclick="update(${r.rowIndex}, 'status', '승인')" class="w-20 bg-green-500 text-white px-3 py-1 rounded text-xs font-bold hover:bg-green-600 shadow-sm">승인 처리</button>` : 
-                                    `<button onclick="update(${r.rowIndex}, 'status', '대기')" class="w-20 bg-gray-400 text-white px-3 py-1 rounded text-xs font-bold hover:bg-gray-500 shadow-sm">승인 취소</button>`
-                                }
-                                <button onclick="update(${r.rowIndex}, 'delete', '')" class="text-red-400 underline text-xs hover:text-red-600">삭제</button>
-                            </div>
-                        </td>
-                    </tr>`;
-                });
+                    if(currentRole === 'partner_admin') {
+                        document.getElementById('btnTruck').classList.add('hidden');
+                        document.getElementById('colAdmin').classList.add('hidden');
+                    }
+                    loadData();
+                } else alert(res.msg);
             });
         }
 
-        // [상태 변경] 승인, 대기, 삭제 처리
-        function update(rowIndex, subAction, value) {
-            let msg = subAction === 'delete' ? '정말 삭제하시겠습니까?' : `'${value}' 상태로 변경하시겠습니까?`;
-            if(!confirm(msg)) return;
+        function loadData() {
+            fetch(`${API_URL}?mode=admin`).then(r=>r.json()).then(res => {
+                adminData = res.data;
+                filterAdmin(currentRole === 'partner_admin' ? '인력' : '푸드트럭');
+            });
+        }
 
-            fetch(API_URL, { 
-                method: 'POST', 
-                body: JSON.stringify({ action: 'admin_update', subAction, rowIndex, value }) 
-            })
-            .then(r => r.json())
-            .then(res => {
-                if(res.status === 'success') {
-                    loadData(); // 목록 새로고침
+        function filterAdmin(cat) {
+            if(currentRole === 'super_admin') {
+                const btnT = document.getElementById('btnTruck');
+                const btnS = document.getElementById('btnStaff');
+                if(cat==='푸드트럭') { btnT.className="px-4 py-2 bg-gray-800 text-white rounded-lg font-bold"; btnS.className="px-4 py-2 bg-white text-gray-600 border rounded-lg font-bold"; }
+                else { btnS.className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold"; btnT.className="px-4 py-2 bg-white text-gray-600 border rounded-lg font-bold"; }
+            }
+
+            const list = document.getElementById('list');
+            list.innerHTML = '';
+            
+            let filtered = adminData.filter(d => d.category === cat);
+            if(currentRole === 'partner_admin') filtered = filtered.filter(d => d.status === '승인');
+
+            if(filtered.length === 0) { list.innerHTML = '<tr><td colspan="4" class="p-6 text-center">데이터 없음</td></tr>'; return; }
+
+            filtered.forEach(r => {
+                const isApp = r.status === '승인';
+                let subInfo = r.category==='인력' ? `<span class="text-blue-600 font-bold">${r.age}세</span> / 📅 ${r.dates}` : `${r.owner} / ${r.phone}`;
+                
+                // 파트너에겐 인력의 연락처 보임
+                if(currentRole === 'partner_admin' && r.category==='인력') subInfo += `<br>📞 ${r.phone}`;
+
+                let docs = "";
+                if(currentRole === 'super_admin') {
+                    docs = `${r.bizUrl?`<a href="${r.bizUrl}" target="_blank" class="text-blue-500 underline text-xs block">📄 사업자</a>`:''} ${r.otherUrl?`<a href="${r.otherUrl}" target="_blank" class="text-green-600 underline text-xs block">🏥 보건증</a>`:''}`;
                 } else {
-                    alert('오류 발생: ' + res.msg);
+                    docs = r.otherUrl ? `<a href="${r.otherUrl}" target="_blank" class="text-green-600 font-bold text-xs">✅ 보건증 확인</a>` : `<span class="text-gray-300 text-xs">미등록</span>`;
                 }
+
+                const btns = currentRole === 'super_admin' ? `
+                    <td class="px-6 py-4 text-center whitespace-nowrap">
+                        <button onclick="update(${r.rowIndex}, 'status', '${isApp?'대기':'승인'}')" class="bg-gray-800 text-white px-3 py-1 rounded text-xs">${isApp?'취소':'승인'}</button>
+                        <button onclick="update(${r.rowIndex}, 'delete', '')" class="text-red-500 underline text-xs ml-2">삭제</button>
+                    </td>` : `<td class="hidden"></td>`;
+
+                list.innerHTML += `
+                <tr class="hover:bg-gray-50 border-b border-gray-100">
+                    <td class="px-6 py-4"><span class="px-2 py-1 text-[10px] font-bold rounded ${isApp?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${r.status}</span></td>
+                    <td class="px-6 py-4"><div class="font-bold text-gray-900">${r.name}</div><div class="text-sm mt-1">${subInfo}</div><div class="text-xs text-gray-500 mt-1">📍 ${r.region}</div></td>
+                    <td class="px-6 py-4">${docs}</td>
+                    ${btns}
+                </tr>`;
             });
         }
 
-        function logout() { location.reload(); }
+        function update(rowIndex, subAction, value) {
+            if(!confirm('처리하시겠습니까?')) return;
+            fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_update', subAction, rowIndex, value }) })
+            .then(() => loadData());
+        }
     </script>
 </body>
 </html>
