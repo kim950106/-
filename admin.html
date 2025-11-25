@@ -5,141 +5,313 @@
     <title>전북푸드커넥트 어드민</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
-    <style>body { font-family: "Pretendard Variable", sans-serif; }</style>
+    <style>
+        body { font-family: "Pretendard Variable", sans-serif; }
+        /* 탭 활성화 스타일 */
+        .tab-active { background-color: #F97316; color: white; border-color: #F97316; }
+        .tab-inactive { background-color: white; color: #4B5563; border-color: #E5E7EB; }
+    </style>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col items-center pt-10">
 
+    <!-- 로딩 오버레이 -->
     <div id="loadingOverlay" class="hidden fixed inset-0 bg-black/50 z-50 flex justify-center items-center text-white font-bold">처리 중...</div>
 
+    <!-- 로그인 화면 -->
     <div id="loginBox" class="bg-white p-8 rounded-2xl shadow-xl w-96 text-center">
         <h1 class="text-xl font-bold mb-6">🔒 관리자/파트너 접속</h1>
-        <input type="text" id="uid" placeholder="ID" class="w-full mb-3 p-3 border rounded-lg">
-        <input type="password" id="upw" placeholder="PW" class="w-full mb-4 p-3 border rounded-lg">
+        <input type="text" id="uid" placeholder="아이디" class="w-full mb-3 p-3 border rounded-lg">
+        <input type="password" id="upw" placeholder="비밀번호" class="w-full mb-4 p-3 border rounded-lg">
         <button onclick="login()" class="w-full bg-gray-900 text-white p-3 rounded-lg font-bold">로그인</button>
     </div>
 
+    <!-- 대시보드 화면 -->
     <div id="dashboard" class="hidden w-full max-w-7xl px-6 pb-20">
         <div class="flex justify-between items-center mb-6">
-            <div><h1 class="text-2xl font-bold">대시보드</h1><span id="roleBadge" class="text-xs bg-gray-200 px-2 py-1 rounded"></span></div>
-            <button onclick="location.reload()" class="text-sm underline">로그아웃</button>
+            <div>
+                <h1 class="text-2xl font-bold">통합 대시보드</h1>
+                <span id="roleBadge" class="text-xs bg-gray-200 px-2 py-1 rounded text-gray-600"></span>
+            </div>
+            <button onclick="location.reload()" class="text-sm underline text-gray-500">로그아웃</button>
         </div>
 
-        <div class="flex gap-2 mb-4 overflow-x-auto">
-            <button onclick="filterAdmin('푸드트럭')" id="btnTruck" class="whitespace-nowrap px-4 py-2 bg-gray-800 text-white rounded-lg font-bold">🚛 트럭</button>
-            <button onclick="filterAdmin('인력')" id="btnStaff" class="whitespace-nowrap px-4 py-2 bg-white text-gray-600 border rounded-lg font-bold">🧑‍🍳 인력</button>
-            <button onclick="showQuotes()" id="btnQuote" class="relative whitespace-nowrap px-4 py-2 bg-white text-gray-600 border rounded-lg font-bold">📩 받은 견적</button>
-            <button onclick="openMyInfo()" id="btnMyInfo" class="hidden whitespace-nowrap px-4 py-2 bg-orange-600 text-white rounded-lg font-bold">✏️ 내 정보 수정</button>
+        <!-- 탭 메뉴 (권한에 따라 보임/숨김 처리) -->
+        <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+            <!-- 관리자용 탭 -->
+            <button onclick="filterAdmin('푸드트럭')" id="btnTruck" class="hidden whitespace-nowrap px-4 py-2 border rounded-lg font-bold tab-inactive">🚛 트럭 관리</button>
+            
+            <!-- 공통 탭 (인력) -->
+            <button onclick="filterAdmin('인력')" id="btnStaff" class="hidden whitespace-nowrap px-4 py-2 border rounded-lg font-bold tab-inactive">🧑‍🍳 인력 현황</button>
+            
+            <!-- 공통 탭 (견적) -->
+            <button onclick="showQuotes()" id="btnQuote" class="hidden relative whitespace-nowrap px-4 py-2 border rounded-lg font-bold tab-inactive">
+                📩 행사 견적
+                <span id="quoteBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 rounded-full animate-bounce">N</span>
+            </button>
+            
+            <!-- 파트너용 탭 -->
+            <button onclick="openMyInfo()" id="btnMyInfo" class="hidden whitespace-nowrap px-4 py-2 bg-green-600 text-white border border-green-600 rounded-lg font-bold hover:bg-green-700">✏️ 내 정보 수정</button>
         </div>
 
-        <div class="mb-4"><input type="text" id="searchInput" onkeyup="searchTable()" placeholder="이름, 연락처 검색..." class="w-full p-3 border rounded-xl text-sm outline-none focus:border-orange-500"></div>
+        <!-- 안내 문구 (파트너용) -->
+        <div id="partnerGuide" class="hidden mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
+            📢 <b>[알림]</b> '상관없음'으로 들어온 행사 문의는 모든 사장님께 노출됩니다.<br>
+            특정 트럭으로 지정된 문의는 해당 사장님만 볼 수 있습니다.
+        </div>
 
-        <div id="listContainer" class="bg-white rounded-xl shadow overflow-hidden">
+        <!-- 검색창 -->
+        <div id="searchBox" class="mb-4">
+            <input type="text" id="searchInput" onkeyup="searchTable()" placeholder="이름, 연락처, 지역 검색..." class="w-full p-3 border rounded-xl text-sm outline-none focus:border-orange-500 shadow-sm">
+        </div>
+
+        <!-- 리스트 컨테이너 -->
+        <div id="listContainer" class="bg-white rounded-xl shadow overflow-hidden border border-gray-100">
             <table class="w-full text-left text-sm text-gray-600">
                 <thead class="bg-gray-100 text-gray-800 uppercase font-bold text-xs">
-                    <tr><th class="px-6 py-3">상태</th><th class="px-6 py-3">정보</th><th class="px-6 py-3">내용/서류</th><th id="colAdmin" class="px-6 py-3 text-center">관리</th></tr>
+                    <tr>
+                        <th class="px-6 py-3 w-24">상태</th>
+                        <th class="px-6 py-3">정보</th>
+                        <th class="px-6 py-3">상세 내용 / 서류</th>
+                        <th id="colAdmin" class="px-6 py-3 text-center w-32">관리</th>
+                    </tr>
                 </thead>
                 <tbody id="list" class="divide-y divide-gray-100"></tbody>
             </table>
         </div>
 
-        <div id="myInfoForm" class="hidden bg-white p-6 rounded-xl shadow">
-            <h3 class="text-lg font-bold mb-4">내 정보 수정</h3>
-            <div class="grid grid-cols-2 gap-4 mb-4">
-                <div><label class="text-xs">사진2</label><input type="file" id="img2" class="w-full text-xs"></div>
-                <div><label class="text-xs">사진3</label><input type="file" id="img3" class="w-full text-xs"></div>
-                <div><label class="text-xs">사진4</label><input type="file" id="img4" class="w-full text-xs"></div>
-                <div><label class="text-xs">사진5</label><input type="file" id="img5" class="w-full text-xs"></div>
+        <!-- 내 정보 수정 폼 (파트너 전용) -->
+        <div id="myInfoForm" class="hidden bg-white p-6 rounded-xl shadow border border-gray-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-800">내 푸드트럭 정보 수정</h3>
+                <button onclick="showQuotes()" class="text-sm text-gray-500 hover:text-black">✕ 닫기</button>
             </div>
-            <div class="mb-4"><label class="text-xs font-bold">소개글</label><textarea id="editDesc" rows="3" class="w-full border p-2 rounded text-sm"></textarea></div>
-            <div class="mb-4"><label class="text-xs font-bold">기본 견적</label><input type="text" id="editQuote" class="w-full border p-2 rounded text-sm"></div>
-            <button onclick="submitUpdate()" class="bg-orange-600 text-white px-6 py-2 rounded font-bold">저장하기</button>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="space-y-2">
+                    <label class="text-xs font-bold">추가 사진 등록 (기존 사진 덮어쓰기)</label>
+                    <input type="file" id="img2" class="w-full text-xs border p-1 rounded"><input type="file" id="img3" class="w-full text-xs border p-1 rounded">
+                    <input type="file" id="img4" class="w-full text-xs border p-1 rounded"><input type="file" id="img5" class="w-full text-xs border p-1 rounded">
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs font-bold block mb-1">소개글</label>
+                        <textarea id="editDesc" rows="4" class="w-full border p-2 rounded text-sm outline-none focus:border-orange-500" placeholder="트럭 소개글을 입력하세요."></textarea>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold block mb-1">기본 견적 (고객에게 노출)</label>
+                        <input type="text" id="editQuote" class="w-full border p-2 rounded text-sm outline-none focus:border-orange-500" placeholder="예: 100인분 80만원부터 (미입력시 '별도문의')">
+                    </div>
+                </div>
+            </div>
+            <button onclick="submitUpdate()" class="w-full bg-orange-600 text-white py-3 rounded-xl font-bold hover:bg-orange-700 transition">수정사항 저장하기</button>
         </div>
     </div>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbxF6LyqeQRb6zm7UMLmUXrJy1qkzGxatmgMm6D85zIHq8-E6OAHp1ygBXdCnmTuuveR/exec"; // ⚠️ URL 교체
-        let adminData = [], quoteData = [], currentRole = "", userName = "", partnerRow = 0;
+        // ⚠️ API URL 교체 필수
+        const API_URL = "YOUR_GOOGLE_SCRIPT_URL_HERE"; 
         
+        let adminData = [], quoteData = [], currentRole = "", userName = "", partnerRow = 0;
         const showLoad = () => document.getElementById('loadingOverlay').classList.remove('hidden');
         const hideLoad = () => document.getElementById('loadingOverlay').classList.add('hidden');
 
+        // 1. 로그인
         function login() {
             const id = document.getElementById('uid').value, pw = document.getElementById('upw').value;
             showLoad();
             fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'login', id, pw }) })
-            .then(r=>r.json()).then(res => {
+            .then(r => r.json()).then(res => {
                 hideLoad();
-                if(res.status==='success') {
-                    currentRole=res.role; userName=res.name; partnerRow=res.partnerRow;
+                if(res.status === 'success') {
+                    currentRole = res.role; userName = res.name; partnerRow = res.partnerRow;
                     document.getElementById('loginBox').classList.add('hidden');
                     document.getElementById('dashboard').classList.remove('hidden');
-                    document.getElementById('roleBadge').innerText = userName;
-                    if(currentRole==='partner_admin') {
-                        document.getElementById('btnTruck').classList.add('hidden');
-                        document.getElementById('btnStaff').classList.add('hidden');
-                        document.getElementById('btnMyInfo').classList.remove('hidden');
-                        showQuotes();
-                    } else loadData();
+                    document.getElementById('roleBadge').innerText = `${userName} (${currentRole==='super_admin'?'관리자':'파트너'})`;
+                    
+                    // 권한별 UI 세팅
+                    if(currentRole === 'partner_admin') {
+                        document.getElementById('btnTruck').classList.add('hidden'); // 트럭 관리 숨김
+                        document.getElementById('btnStaff').classList.remove('hidden'); // 인력 보기
+                        document.getElementById('btnQuote').classList.remove('hidden'); // 견적 보기
+                        document.getElementById('btnMyInfo').classList.remove('hidden'); // 내정보
+                        document.getElementById('colAdmin').classList.add('hidden'); // 관리자 버튼 열 숨김
+                        document.getElementById('partnerGuide').classList.remove('hidden');
+                        loadData(); // 데이터 로드 후 자동으로 견적 탭 이동
+                    } else {
+                        // 슈퍼 관리자
+                        document.getElementById('btnTruck').classList.remove('hidden');
+                        document.getElementById('btnStaff').classList.remove('hidden');
+                        document.getElementById('btnQuote').classList.remove('hidden');
+                        loadData();
+                    }
                 } else alert(res.msg);
             });
         }
 
+        // 2. 데이터 로드
         function loadData() {
-            fetch(`${API_URL}?mode=admin`).then(r=>r.json()).then(res => {
+            fetch(`${API_URL}?mode=admin`).then(r => r.json()).then(res => {
                 adminData = res.data; quoteData = res.quotes;
-                if(currentRole!=='partner_admin') filterAdmin('푸드트럭');
+                
+                // 초기 화면
+                if(currentRole === 'partner_admin') showQuotes();
+                else filterAdmin('푸드트럭');
             });
         }
 
+        // 3. 트럭/인력 리스트 뷰
         function filterAdmin(cat) {
-            resetTabs('btnTruck','btnStaff');
-            const list = document.getElementById('list'); list.innerHTML = '';
-            adminData.filter(d => d.category === cat).forEach(r => {
-                const isApp = r.status === '승인';
-                let docs = `${r.bizUrl?`<a href="${r.bizUrl}" target="_blank" class="text-blue-500 text-xs block">📄 사업자</a>`:''} ${r.fileHealth?`<a href="${r.fileHealth}" target="_blank" class="text-green-600 text-xs block">🏥 보건증</a>`:''}`;
-                let info = r.category==='인력' ? `${r.age}세 / ${r.dates}` : `${r.owner} / ${r.phone}`;
-                let btns = currentRole==='super_admin' ? 
-                    `<button onclick="approve('${r.name}', ${r.rowIndex})" class="bg-green-600 text-white px-2 py-1 rounded text-xs mb-1 w-full">승인(계정생성)</button>
-                     <button onclick="del(${r.rowIndex})" class="text-red-500 text-xs">삭제</button>` : '';
-                if(isApp && currentRole==='super_admin') btns = `<span class="text-blue-600 font-bold text-xs">승인됨</span> <button onclick="del(${r.rowIndex})" class="text-red-500 text-xs ml-2">삭제</button>`;
-
-                list.innerHTML += `<tr class="hover:bg-gray-50 border-b"><td class="px-6 py-4"><span class="px-2 py-1 text-[10px] bg-gray-100 rounded">${r.status}</span></td><td class="px-6 py-4"><div class="font-bold">${r.name}</div><div class="text-xs">${info}</div></td><td class="px-6 py-4">${docs}</td><td class="px-6 py-4 text-center">${btns}</td></tr>`;
-            });
-        }
-
-        function showQuotes() {
-            resetTabs('btnQuote');
+            updateTabs(cat === '푸드트럭' ? 'btnTruck' : 'btnStaff');
             document.getElementById('listContainer').classList.remove('hidden');
             document.getElementById('myInfoForm').classList.add('hidden');
-            const list = document.getElementById('list'); list.innerHTML='';
-            const filtered = quoteData.filter(q => currentRole==='super_admin' || q.targetTruck===userName || q.targetTruck==='상관없음');
-            
-            filtered.forEach(q => {
-                const isPending = q.status === '대기';
-                let btns = isPending ? `<button onclick="processQuote(${q.rowIndex},'승인','${q.details}','${q.client}')" class="bg-blue-600 text-white px-2 py-1 rounded text-xs">승낙</button> <button onclick="processQuote(${q.rowIndex},'거절','')" class="bg-red-100 text-red-500 px-2 py-1 rounded text-xs">거절</button>` : `<span class="font-bold text-blue-600">${q.status}됨</span>`;
-                list.innerHTML += `<tr class="hover:bg-gray-50 border-b"><td class="px-6 py-4"><span class="text-xs text-gray-400">${q.date.split('오')[0]}</span><br><b>${q.client}</b></td><td class="px-6 py-4"><div class="text-sm font-bold">📅 ${q.eventDate}</div><div class="text-xs">${q.loc}</div></td><td class="px-6 py-4"><div class="text-xs bg-gray-50 p-2 rounded whitespace-pre-wrap">${q.details}</div></td><td class="px-6 py-4 text-center">${btns}</td></tr>`;
+            const list = document.getElementById('list'); list.innerHTML = '';
+
+            let filtered = adminData.filter(d => d.category === cat);
+            // 파트너는 '인력' 탭에서 '승인된 인력'만 볼 수 있음 (채용 목적)
+            if(currentRole === 'partner_admin' && cat === '인력') {
+                filtered = filtered.filter(d => d.status === '승인');
+            }
+
+            if(filtered.length === 0) { list.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-400">데이터가 없습니다.</td></tr>'; return; }
+
+            filtered.forEach(r => {
+                const isApp = r.status === '승인';
+                // 파트너에게 인력 연락처 노출, 관리자에겐 모두 노출
+                let info = r.category === '인력' ? 
+                    `<span class="text-blue-600 font-bold">${r.age}세 / ${r.dates}</span><br>${r.name}` : 
+                    `${r.name}<br><span class="text-gray-400 text-xs">${r.owner} / ${r.phone}</span>`;
+                
+                if(currentRole === 'partner_admin' && r.category === '인력') info += `<br>📞 ${r.phone}`;
+
+                // 서류 (관리자: 모두 / 파트너: 인력 보건증만)
+                let docs = "";
+                if(currentRole === 'super_admin') {
+                    docs = `${r.bizUrl?`<a href="${r.bizUrl}" target="_blank" class="text-blue-500 underline text-xs">📄 사업자</a> `:''}
+                            ${r.fileHealth?`<a href="${r.fileHealth}" target="_blank" class="text-green-600 underline text-xs">🏥 보건증</a>`:''}`;
+                } else if (r.category === '인력') {
+                    docs = r.fileHealth ? `<a href="${r.fileHealth}" target="_blank" class="text-green-600 font-bold text-xs">✅ 보건증 확인</a>` : `<span class="text-gray-300 text-xs">미제출</span>`;
+                }
+
+                // 관리 버튼 (관리자만)
+                let btns = "";
+                if(currentRole === 'super_admin') {
+                    btns = `<button onclick="update(${r.rowIndex},'status','${isApp?'대기':'승인'}')" class="bg-gray-800 text-white px-2 py-1 rounded text-xs mr-1">${isApp?'취소':'승인'}</button>
+                            <button onclick="update(${r.rowIndex},'delete','')" class="text-red-500 text-xs underline">삭제</button>`;
+                    if(isApp && currentRole==='super_admin' && cat==='푸드트럭') {
+                        btns = `<button onclick="approveAccount('${r.name}', ${r.rowIndex})" class="bg-green-600 text-white px-2 py-1 rounded text-xs w-full mb-1">계정생성</button>` + btns;
+                    }
+                }
+
+                list.innerHTML += `
+                <tr class="hover:bg-gray-50 border-b border-gray-100">
+                    <td class="px-6 py-4"><span class="px-2 py-1 text-[10px] font-bold rounded ${isApp?'bg-green-100 text-green-700':'bg-gray-200 text-gray-600'}">${r.status}</span></td>
+                    <td class="px-6 py-4 font-medium text-gray-800">${info}</td>
+                    <td class="px-6 py-4">${docs}</td>
+                    <td class="px-6 py-4 text-center ${currentRole==='partner_admin'?'hidden':''}">${btns}</td>
+                </tr>`;
             });
         }
 
-        function approve(name, rowIndex) {
+        // 4. 견적 리스트 뷰 (핵심 로직)
+        function showQuotes() {
+            updateTabs('btnQuote');
+            document.getElementById('listContainer').classList.remove('hidden');
+            document.getElementById('myInfoForm').classList.add('hidden');
+            const list = document.getElementById('list'); list.innerHTML = '';
+
+            // [필터링]
+            // 관리자: 전체 보기
+            // 파트너: '상관없음' OR '내 트럭 이름'이 지정된 견적만 보기
+            let myQuotes = quoteData;
+            if(currentRole === 'partner_admin') {
+                myQuotes = quoteData.filter(q => q.targetTruck === '상관없음' || q.targetTruck === userName);
+            }
+
+            if(myQuotes.length === 0) { list.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-400">접수된 견적이 없습니다.</td></tr>'; return; }
+
+            // 뱃지 업데이트
+            const pendingCnt = myQuotes.filter(q => q.status === '대기').length;
+            const badge = document.getElementById('quoteBadge');
+            if(pendingCnt > 0) { badge.innerText = pendingCnt; badge.classList.remove('hidden'); } 
+            else badge.classList.add('hidden');
+
+            myQuotes.forEach(q => {
+                const isPending = q.status === '대기';
+                const isMyTarget = q.targetTruck === userName;
+                
+                // 타겟 표시 (상관없음 vs 지정)
+                const targetBadge = q.targetTruck === '상관없음' 
+                    ? `<span class="text-[10px] bg-gray-200 px-1.5 py-0.5 rounded text-gray-600">전체공개</span>` 
+                    : `<span class="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-bold">🔔 지정견적</span>`;
+
+                let btns = '-';
+                // 대기 상태일 때 승인/거절 버튼 노출
+                if (isPending) {
+                    btns = `<button onclick="processQuote(${q.rowIndex},'승인','${q.details}','${q.client}')" class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700 shadow-sm">승낙하기</button>
+                            <button onclick="processQuote(${q.rowIndex},'거절','')" class="bg-white border border-red-200 text-red-500 px-3 py-1.5 rounded text-xs hover:bg-red-50 ml-1">거절</button>`;
+                } else {
+                    btns = `<span class="font-bold ${q.status==='승인'?'text-blue-600':'text-red-500'}">${q.status}됨</span>`;
+                }
+
+                // 파트너는 본인 지정 견적이나, 전체 견적에 대해 승낙 가능
+                // 단, 이미 다른사람이 승낙했는지 여부는 실시간 DB가 아니라서 겹칠 수 있음 (MVP 한계)
+                // 여기서는 심플하게 버튼 노출
+
+                list.innerHTML += `
+                <tr class="hover:bg-gray-50 border-b border-gray-100 ${isPending?'bg-orange-50/30':''}">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        ${targetBadge}<br>
+                        <span class="text-xs text-gray-400">${q.date.split('오')[0]}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="font-bold text-gray-800">${q.client}</div>
+                        <div class="text-sm mt-1">📅 ${q.eventDate} / ${q.loc}</div>
+                        <div class="text-xs text-gray-500 mt-1">예산: ${q.budget}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-xs bg-white border p-3 rounded-lg text-gray-700 whitespace-pre-wrap leading-relaxed">${q.details}</div>
+                    </td>
+                    <td class="px-6 py-4 text-center align-middle">
+                        ${btns}
+                    </td>
+                </tr>`;
+            });
+        }
+
+        // [기능] 상태 업데이트
+        function update(rowIndex, subAction, value) {
+            if(!confirm('처리하시겠습니까?')) return;
+            fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_update', subAction, rowIndex, value }) }).then(() => loadData());
+        }
+
+        // [기능] 계정 생성 (관리자용)
+        function approveAccount(name, rowIndex) {
             const newId = prompt(`'${name}' 사장님 아이디 생성`); if(!newId) return;
             const newPw = prompt(`비밀번호 생성`); if(!newPw) return;
             showLoad();
-            fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_approve', rowIndex, newId, newPw, name }) }).then(r=>r.json()).then(res=>{ hideLoad(); alert(res.msg); loadData(); });
-        }
-        
-        function processQuote(rowIndex, decision, details, clientName) {
-            let clientEmail = "";
-            if(details.includes("이메일:")) clientEmail = details.split("이메일:")[1].split(")")[0].trim();
-            if(!confirm(`${decision} 하시겠습니까?`)) return;
-            showLoad();
-            fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'quote_approval', rowIndex, decision, truckName: userName, clientEmail }) }).then(r => { hideLoad(); alert(r.msg); loadData(); });
+            fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_approve', rowIndex, newId, newPw, name }) })
+            .then(r=>r.json()).then(res=>{ hideLoad(); alert(res.msg); loadData(); });
         }
 
-        function del(idx) { if(confirm('삭제하시겠습니까?')) fetch(API_URL, { method:'POST', body:JSON.stringify({action:'delete_partner', rowIndex:idx})}).then(()=>loadData()); }
-        
-        function openMyInfo(){ document.getElementById('listContainer').classList.add('hidden'); document.getElementById('myInfoForm').classList.remove('hidden'); }
-        
+        // [기능] 견적 승낙/거절
+        function processQuote(rowIndex, decision, details, clientName) {
+            let clientEmail = "";
+            if(details && details.includes("이메일:")) clientEmail = details.split("이메일:")[1].split(")")[0].trim();
+            
+            if(!confirm(`${decision} 하시겠습니까?\n승인 시 고객에게 안내 메일이 발송됩니다.`)) return;
+            showLoad();
+            fetch(API_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: 'quote_approval', rowIndex, decision, truckName: userName, clientEmail }) 
+            }).then(r => { hideLoad(); alert(r.msg); loadData(); });
+        }
+
+        // [기능] 내 정보 수정 (파트너용)
+        function openMyInfo() {
+            updateTabs('btnMyInfo');
+            document.getElementById('listContainer').classList.add('hidden');
+            document.getElementById('myInfoForm').classList.remove('hidden');
+        }
         async function submitUpdate() {
             const p = { action:'partner_update', rowIndex:partnerRow, desc:document.getElementById('editDesc').value, basicQuote:document.getElementById('editQuote').value };
             p.img2 = await toBase64(document.getElementById('img2').files[0]);
@@ -149,13 +321,26 @@
             showLoad(); fetch(API_URL, {method:'POST', body:JSON.stringify(p)}).then(r=>r.json()).then(res=>{ hideLoad(); alert(res.msg); });
         }
 
+        // UI 유틸
+        function updateTabs(activeId) {
+            ['btnTruck','btnStaff','btnQuote','btnMyInfo'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) {
+                    el.classList.remove('tab-active');
+                    el.classList.add('tab-inactive');
+                }
+            });
+            const active = document.getElementById(activeId);
+            if(active) {
+                active.classList.remove('tab-inactive');
+                active.classList.add('tab-active');
+            }
+        }
         function searchTable() {
             const filter = document.getElementById("searchInput").value.toUpperCase();
             const tr = document.getElementById("list").getElementsByTagName("tr");
             for (let i=0; i<tr.length; i++) tr[i].style.display = (tr[i].textContent.toUpperCase().indexOf(filter) > -1) ? "" : "none";
         }
-
-        function resetTabs(...ids){ ['btnTruck','btnStaff','btnQuote','btnMyInfo'].forEach(id=>{const el=document.getElementById(id); if(el) el.className="whitespace-nowrap px-4 py-2 bg-white text-gray-600 border rounded-lg font-bold";}); if(ids.length) document.getElementById(ids[0]).className="whitespace-nowrap px-4 py-2 bg-gray-800 text-white rounded-lg font-bold"; }
         const toBase64 = file => new Promise(r => { if(!file)r(''); else {const rx=new FileReader(); rx.onload=e=>r(e.target.result); rx.readAsDataURL(file);} });
     </script>
 </body>
