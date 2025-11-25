@@ -242,4 +242,61 @@
             document.getElementById('detailMenu').innerText = d.menu;
             document.getElementById('detailDesc').innerText = d.desc;
             document.getElementById('detailBadge').innerText = d.category;
-            document.getElementById('quoteBox').classList.add('hi
+            document.getElementById('quoteBox').classList.add('hidden');
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        function showQuote() {
+            const box = document.getElementById('quoteBox');
+            const txt = document.getElementById('quoteText');
+            txt.innerText = (currentDetail.basicQuote && currentDetail.basicQuote.trim()) ? currentDetail.basicQuote : "행사문의 하시면 별도로 연락드리겠습니다.";
+            box.classList.remove('hidden');
+            box.scrollIntoView({behavior:'smooth'});
+        }
+        function closeDetail() { document.getElementById('detailModal').classList.add('hidden'); }
+
+        document.getElementById('quoteForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('quoteBtn'); btn.innerText="전송 중..."; btn.disabled=true;
+            const p = Object.fromEntries(new FormData(e.target).entries());
+            fetch(API_URL, {method:'POST', body:JSON.stringify(p)}).then(r=>r.json()).then(res=>{alert(res.msg); e.target.reset();}).finally(()=>{btn.innerText="행사문의 보내기"; btn.disabled=false;});
+        };
+        document.getElementById('partnerForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('partnerBtn'); btn.innerText="전송 중..."; btn.disabled=true;
+            const fd = new FormData(e.target);
+            let p = Object.fromEntries(fd.entries());
+            if(p.category==='인력'){p.name=document.getElementById('staffName').value; p.owner=document.getElementById('staffAge').value+'세'; p.age=document.getElementById('staffAge').value; p.dates=document.getElementById('staffDates').value;}
+            else{p.name=document.getElementById('truckName').value; p.owner=document.getElementById('truckOwner').value; p.basicQuote=document.getElementById('basicQuote').value;}
+            
+            p.fileBiz=await toBase64(document.getElementById('fileBiz').files[0]);
+            p.fileBank=await toBase64(document.getElementById('fileBank').files[0]);
+            p.fileOther=await toBase64(document.getElementById('fileOther').files[0]);
+            p.img1=await toBase64(document.getElementById('img1').files[0]);
+
+            fetch(API_URL, {method:'POST', body:JSON.stringify(p)}).then(r=>r.json()).then(res=>{alert(res.msg); if(res.status==='success')location.reload();}).finally(()=>{btn.innerText="등록 신청하기"; btn.disabled=false;});
+        };
+
+        const regions = ['전체','전주','군산','익산','정읍','남원','김제','완주','진안','무주','장수','임실','순창','고창','부안'];
+        document.getElementById('regionGrid').innerHTML = regions.map(r => `<button onclick="filterTrucks('${r}');document.getElementById('regionModal').classList.add('hidden')" class="p-3 bg-gray-100 rounded-xl hover:bg-orange-100 hover:text-orange-600 font-bold">${r}</button>`).join('');
+        function openRegionModal(){ document.getElementById('regionModal').classList.remove('hidden'); }
+        function switchTab(t) {
+            ['home','partner'].forEach(x=>document.getElementById(x+'View').classList.add('hidden'));
+            document.getElementById(t+'View').classList.remove('hidden');
+            document.getElementById('tabHome').className = "flex-1 flex flex-col items-center " + (t==='home'?'text-orange-600':'text-gray-400');
+            document.getElementById('tabPartner').className = "flex-1 flex flex-col items-center " + (t==='partner'?'text-white':'text-gray-400');
+            document.body.style.backgroundColor = t==='partner'?'#111827':'#F8F9FA';
+            window.scrollTo(0,0);
+        }
+        function toggleForm(type) {
+            const isS = type==='staff';
+            document.getElementById('fieldTruckOnly').classList.toggle('hidden', isS);
+            document.getElementById('fieldStaffOnly').classList.toggle('hidden', !isS);
+            document.getElementById('divBiz').classList.toggle('hidden', isS);
+            document.getElementById('truckName').required = !isS;
+            document.getElementById('staffName').required = isS;
+        }
+        const toBase64 = file => new Promise(r => { if(!file)r(''); else {const rx=new FileReader(); rx.onload=e=>r(e.target.result); rx.readAsDataURL(file);} });
+    </script>
+</body>
+</html>
