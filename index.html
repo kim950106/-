@@ -9,206 +9,330 @@
     <style>
         body { font-family: "Pretendard Variable", sans-serif; background-color: #F8F9FA; -webkit-tap-highlight-color: transparent; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="pb-24 text-gray-800 antialiased">
+<body class="pb-28 text-gray-800 antialiased">
 
     <!-- 헤더 -->
     <header class="fixed top-0 w-full z-40 px-5 py-4 bg-white/90 backdrop-blur-md border-b border-gray-100 flex justify-between items-center">
-        <h1 class="text-lg font-extrabold text-orange-600 tracking-tight">전북푸드커넥트 🚚</h1>
-        <span class="text-[10px] bg-gray-100 px-2 py-1 rounded-full font-bold text-gray-500">전북 전지역</span>
+        <h1 class="text-lg font-extrabold text-orange-600 tracking-tight cursor-pointer" onclick="location.reload()">전북푸드커넥트 🚚</h1>
+        <button onclick="openRegionModal()" class="flex items-center gap-1 text-[11px] bg-orange-50 text-orange-600 px-3 py-1.5 rounded-full font-bold border border-orange-100">
+            <span id="currentRegion">전북 전체</span> ▾
+        </button>
     </header>
 
-    <!-- 1. 고객용 화면 -->
-    <main id="customerView" class="pt-20 animate-fade-in">
-        <!-- 메인 배너 -->
+    <!-- 1. 홈 (고객용) -->
+    <main id="homeView" class="pt-20 animate-fade-in">
+        <!-- 배너 -->
         <section class="px-5 mb-8">
             <div class="relative h-64 rounded-[2rem] overflow-hidden shadow-xl shadow-orange-500/10">
                 <img src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800" class="absolute inset-0 w-full h-full object-cover brightness-75">
                 <div class="absolute bottom-6 left-6 text-white">
                     <span class="inline-block px-2 py-1 mb-2 text-[10px] font-bold bg-orange-600 rounded">공식 파트너</span>
-                    <h2 class="text-2xl font-bold leading-tight">성공적인 행사의 시작,<br>검증된 푸드트럭</h2>
+                    <h2 class="text-2xl font-bold leading-tight">행사의 품격,<br>검증된 푸드트럭</h2>
                 </div>
             </div>
         </section>
 
-        <!-- 트럭 리스트 (승인된 업체만 표시) -->
-        <section class="mb-10 pl-5">
-            <h3 class="text-lg font-bold mb-3 pr-5 text-gray-900">🔥 이달의 추천 라인업</h3>
-            <div id="truckList" class="flex gap-4 overflow-x-auto pb-6 pr-5 scrollbar-hide snap-x">
-                <div class="w-full py-10 text-center text-xs text-gray-400">데이터를 불러오는 중입니다...</div>
+        <!-- 우리동네 푸드트럭 리스트 -->
+        <section class="mb-10 px-5">
+            <h3 class="text-lg font-bold mb-3 text-gray-900">🚛 우리동네 푸드트럭</h3>
+            <div id="truckList" class="grid grid-cols-2 gap-4">
+                <div class="col-span-2 py-10 text-center text-xs text-gray-400">데이터를 불러오는 중...</div>
             </div>
         </section>
 
-        <!-- 견적 문의 폼 -->
+        <!-- 견적 문의 -->
         <section class="px-5">
             <div class="bg-white p-6 rounded-3xl shadow-xl shadow-gray-100 border border-gray-50">
-                <div class="text-center mb-6">
-                    <h3 class="text-xl font-bold">📝 간편 견적 요청</h3>
-                    <p class="text-xs text-gray-400 mt-1">원하는 예산과 메뉴를 알려주세요.</p>
-                </div>
+                <h3 class="text-xl font-bold mb-1">📝 간편 견적 요청</h3>
+                <p class="text-xs text-gray-400 mb-4">원하는 지역과 메뉴를 알려주세요.</p>
                 <form id="quoteForm" class="space-y-3">
                     <input type="hidden" name="type" value="quote">
                     <div class="flex gap-3">
-                        <input type="text" name="name" placeholder="신청자명" required class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 transition">
-                        <input type="tel" name="phone" placeholder="연락처" required class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 transition">
+                        <input type="text" name="name" placeholder="신청자명" required class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none">
+                        <input type="tel" name="phone" placeholder="연락처" required class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none">
                     </div>
-                    <input type="text" name="location" placeholder="행사 장소 (예: 전주 월드컵경기장)" required class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 transition">
+                    <input type="text" name="location" placeholder="행사 장소" required class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none">
                     <div class="flex gap-3">
-                        <input type="date" name="date" required class="w-full bg-gray-50 p-3 rounded-xl text-sm text-gray-500 outline-none focus:ring-2 focus:ring-orange-500 transition">
-                        <input type="text" name="budget" placeholder="예산/인원" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 transition">
+                        <input type="date" name="date" required class="w-full bg-gray-50 p-3 rounded-xl text-sm text-gray-500 outline-none">
+                        <input type="text" name="budget" placeholder="예산/인원" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none">
                     </div>
-                    <textarea name="details" rows="3" placeholder="요청사항 (원하는 메뉴 등)" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 transition"></textarea>
-                    <button type="submit" id="quoteBtn" class="w-full bg-gray-900 text-white py-4 rounded-xl font-bold shadow-lg mt-2 active:scale-95 transition">무료 견적 받기</button>
+                    <textarea name="details" rows="2" placeholder="요청사항" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none"></textarea>
+                    <button type="submit" id="quoteBtn" class="w-full bg-orange-600 text-white py-4 rounded-xl font-bold shadow-lg active:scale-95 transition">견적 받기</button>
                 </form>
             </div>
         </section>
     </main>
 
-    <!-- 2. 파트너 신청 화면 (사장님용) -->
-    <main id="partnerView" class="hidden pt-20 bg-gray-900 min-h-screen text-white pb-24">
-        <section class="px-6 text-center mb-8">
-            <h2 class="text-2xl font-bold mb-2">사장님, 환영합니다!</h2>
-            <p class="text-gray-400 text-xs">전북푸드커넥트와 함께 매출을 높여보세요.</p>
-        </section>
+    <!-- 2. 인력 리스트 화면 (사장님 열람용) -->
+    <main id="staffView" class="hidden pt-20 px-5 min-h-screen bg-gray-50">
+        <h2 class="text-xl font-bold mb-2 text-gray-800">🧑‍🍳 현장 지원 인력</h2>
+        <p class="text-xs text-gray-500 mb-6">검증된 현장 스태프 리스트입니다.</p>
+        <div id="staffList" class="space-y-4"></div>
+    </main>
+
+    <!-- 3. 등록 신청 화면 (동적 폼) -->
+    <main id="partnerView" class="hidden pt-20 bg-gray-900 min-h-screen text-white pb-24 px-5">
+        <div class="text-center mb-6">
+            <h2 class="text-2xl font-bold mb-1">등록 신청</h2>
+            <p class="text-gray-400 text-xs">푸드트럭 입점 및 현장 스태프 등록</p>
+        </div>
         
-        <section class="px-5">
-            <form id="partnerForm" class="space-y-4 bg-gray-800 p-6 rounded-3xl border border-gray-700">
-                <input type="hidden" name="type" value="partner">
-                <div class="space-y-3">
-                    <label class="text-xs text-gray-500 font-bold ml-1">기본 정보</label>
-                    <input type="text" name="truckName" placeholder="상호명" required class="w-full bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm focus:border-orange-500 outline-none transition">
+        <form id="partnerForm" class="space-y-4 bg-gray-800 p-6 rounded-3xl border border-gray-700">
+            <input type="hidden" name="type" value="partner">
+            
+            <!-- 유형 선택 -->
+            <div class="flex gap-2 p-1 bg-gray-900 rounded-xl border border-gray-600">
+                <label class="flex-1 cursor-pointer">
+                    <input type="radio" name="category" value="푸드트럭" checked class="peer hidden" onchange="toggleForm('truck')">
+                    <div class="py-3 text-center rounded-lg text-gray-400 peer-checked:bg-orange-600 peer-checked:text-white transition text-sm font-bold">🚚 트럭 사장님</div>
+                </label>
+                <label class="flex-1 cursor-pointer">
+                    <input type="radio" name="category" value="인력" class="peer hidden" onchange="toggleForm('staff')">
+                    <div class="py-3 text-center rounded-lg text-gray-400 peer-checked:bg-blue-600 peer-checked:text-white transition text-sm font-bold">🧑‍🍳 현장 스태프</div>
+                </label>
+            </div>
+
+            <!-- 입력 필드 -->
+            <div class="space-y-3">
+                <!-- 트럭 전용 -->
+                <div id="fieldTruckOnly">
+                    <input type="text" id="truckName" placeholder="상호명" class="w-full bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm outline-none mb-3">
+                    <input type="text" id="truckOwner" placeholder="대표자명" class="w-full bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm outline-none">
+                </div>
+                <!-- 인력 전용 -->
+                <div id="fieldStaffOnly" class="hidden space-y-3">
+                    <input type="text" id="staffName" placeholder="성함 (본명)" class="w-full bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm outline-none">
                     <div class="flex gap-2">
-                        <input type="text" name="ownerName" placeholder="대표자명" required class="w-full bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm focus:border-orange-500 outline-none transition">
-                        <input type="tel" name="phone" placeholder="연락처" required class="w-full bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm focus:border-orange-500 outline-none transition">
-                    </div>
-                    <input type="text" name="menu" placeholder="주요 메뉴" required class="w-full bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm focus:border-orange-500 outline-none transition">
-                    <input type="text" name="region" placeholder="활동 지역" required class="w-full bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm focus:border-orange-500 outline-none transition">
-                </div>
-
-                <div class="space-y-3 pt-2 border-t border-gray-700">
-                    <label class="text-xs text-gray-500 font-bold ml-1">필수 서류 첨부 (이미지)</label>
-                    <!-- 사업자 등록증 -->
-                    <div class="p-3 bg-gray-900 rounded-xl border border-gray-600 flex justify-between items-center">
-                        <span class="text-xs text-gray-300">사업자등록증</span>
-                        <input type="file" id="fileBiz" accept="image/*" class="text-[10px] text-gray-500 w-40">
-                    </div>
-                    <!-- 통장 사본 -->
-                    <div class="p-3 bg-gray-900 rounded-xl border border-gray-600 flex justify-between items-center">
-                        <span class="text-xs text-gray-300">통장사본</span>
-                        <input type="file" id="fileBank" accept="image/*" class="text-[10px] text-gray-500 w-40">
+                        <input type="number" id="staffAge" placeholder="나이" class="w-1/3 bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm outline-none">
+                        <input type="text" id="staffDates" placeholder="희망 근무일 (예: 주말)" class="w-2/3 bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm outline-none">
                     </div>
                 </div>
 
-                <button type="submit" id="partnerBtn" class="w-full bg-orange-600 text-white py-4 rounded-xl font-bold mt-4 shadow-lg shadow-orange-900/50">입점 신청하기</button>
-            </form>
-        </section>
+                <!-- 공통 -->
+                <input type="tel" name="phone" placeholder="연락처 (-없이)" required class="w-full bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm outline-none">
+                <input type="text" name="region" placeholder="활동/거주 지역" required class="w-full bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm outline-none">
+                <input type="text" name="menu" id="inputMenu" placeholder="주요 메뉴" required class="w-full bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm outline-none">
+                <textarea name="desc" rows="3" placeholder="소개글 / 경력사항" class="w-full bg-gray-900 border border-gray-600 p-3 rounded-xl text-sm outline-none"></textarea>
+            </div>
+
+            <!-- 파일 첨부 -->
+            <div class="space-y-2 pt-2 border-t border-gray-700">
+                <label class="text-xs text-gray-500 font-bold ml-1">사진 및 서류</label>
+                <div id="divBiz" class="p-2 bg-gray-900 rounded-lg border border-gray-600 flex justify-between items-center">
+                    <span class="text-xs text-gray-300">🏢 사업자등록증</span>
+                    <input type="file" id="fileBiz" class="text-[10px] text-gray-500 w-40">
+                </div>
+                <div class="p-2 bg-gray-900 rounded-lg border border-gray-600 flex justify-between items-center">
+                    <span class="text-xs text-gray-300">💰 통장사본</span>
+                    <input type="file" id="fileBank" class="text-[10px] text-gray-500 w-40">
+                </div>
+                <div class="p-2 bg-gray-900 rounded-lg border border-gray-600 flex justify-between items-center">
+                    <span class="text-xs text-gray-300">🏥 기타(보건증)</span>
+                    <input type="file" id="fileOther" class="text-[10px] text-gray-500 w-40">
+                </div>
+                <div class="p-2 bg-gray-900 rounded-lg border border-gray-600 flex justify-between items-center">
+                    <span id="labelImg" class="text-xs text-gray-300">📷 대표 사진</span>
+                    <input type="file" id="img1" class="text-[10px] text-gray-500 w-40">
+                </div>
+            </div>
+
+            <!-- 개인정보 동의 -->
+            <div class="bg-gray-700/50 p-3 rounded-xl border border-gray-600">
+                <label class="flex items-start gap-2 cursor-pointer">
+                    <input type="checkbox" name="consent" required class="mt-1 w-4 h-4 text-orange-600 rounded bg-gray-800 border-gray-500 focus:ring-orange-500">
+                    <div class="text-[11px] text-gray-300 leading-snug">
+                        <span class="text-orange-400 font-bold">(필수) 개인정보 제공 동의</span><br>
+                        매칭 확정 시 구인자(푸드트럭 사장님)에게 연락처가 공개됩니다.
+                    </div>
+                </label>
+            </div>
+
+            <button type="submit" id="partnerBtn" class="w-full bg-white text-black py-4 rounded-xl font-bold mt-2 shadow-lg">등록 신청하기</button>
+        </form>
     </main>
 
     <!-- 하단 탭바 -->
-    <nav class="fixed bottom-6 left-5 right-5 h-16 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] flex justify-between items-center px-2 z-50 border border-gray-100">
-        <button onclick="switchTab('customer')" id="tabCustomer" class="w-full h-full flex flex-col items-center justify-center text-orange-600 gap-1">
-            <span class="text-xl">📋</span>
-            <span class="text-[10px] font-bold">견적요청</span>
+    <nav class="fixed bottom-6 left-5 right-5 h-16 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] flex justify-between items-center px-4 z-40 border border-gray-100 text-[10px] font-bold">
+        <button onclick="switchTab('home')" id="tabHome" class="flex-1 flex flex-col items-center text-orange-600">
+            <span class="text-xl">🏠</span>홈/견적
         </button>
-        <div class="w-px h-6 bg-gray-100"></div>
-        <button onclick="switchTab('partner')" id="tabPartner" class="w-full h-full flex flex-col items-center justify-center text-gray-400 gap-1">
-            <span class="text-xl">⚡</span>
-            <span class="text-[10px] font-bold">파트너신청</span>
+        <button onclick="switchTab('staff')" id="tabStaff" class="flex-1 flex flex-col items-center text-gray-400">
+            <span class="text-xl">🧑‍🍳</span>인력보기
+        </button>
+        <button onclick="switchTab('partner')" id="tabPartner" class="flex-1 flex flex-col items-center text-gray-400">
+            <span class="text-xl">📝</span>등록하기
         </button>
     </nav>
 
-    <script>
-        // ✅ 사용자가 제공한 배포 URL 적용
-        const API_URL = "https://script.google.com/macros/s/AKfycbxrDp_5zX6nPn63w4tx8VqVUh2669tfpaWTPJ19OeMEw0r4PkHtNqUb3zWViexnZzUi/exec";
+    <!-- 상세 보기 모달 -->
+    <div id="detailModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center px-4">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="document.getElementById('detailModal').classList.add('hidden')"></div>
+        <div class="bg-white w-full max-w-sm rounded-3xl overflow-hidden relative z-10 shadow-2xl h-[70vh] flex flex-col">
+            <div class="h-1/2 bg-gray-200 relative overflow-hidden">
+                <div id="modalImages" class="flex transition-transform duration-300 h-full"></div>
+                <button onclick="document.getElementById('detailModal').classList.add('hidden')" class="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full">✕</button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1">
+                <span id="detailBadge" class="text-[10px] font-bold px-2 py-1 rounded bg-orange-100 text-orange-600 mb-2 inline-block"></span>
+                <h3 id="detailName" class="text-2xl font-bold text-gray-900 mb-1"></h3>
+                <p id="detailRegion" class="text-xs text-gray-500 mb-4"></p>
+                <div class="bg-gray-50 p-4 rounded-xl mb-4">
+                    <h4 class="text-xs font-bold text-gray-400 mb-1">메뉴 / 특기</h4>
+                    <p id="detailMenu" class="font-medium text-gray-800"></p>
+                </div>
+                <p id="detailDesc" class="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap"></p>
+            </div>
+        </div>
+    </div>
 
-        // [초기 실행] 서버에서 승인된 트럭 리스트 가져오기
-        fetch(`${API_URL}?mode=client`).then(r => r.json()).then(json => {
-            const list = document.getElementById('truckList');
-            list.innerHTML = '';
-            
-            if(!json.data || json.data.length === 0) {
-                list.innerHTML = '<div class="w-full py-10 text-center text-xs text-gray-400">현재 등록된 트럭이 없습니다.</div>';
-                return;
-            }
-            
-            json.data.forEach(t => {
-                list.innerHTML += `
-                    <div class="snap-center shrink-0 w-36 cursor-pointer group">
-                        <div class="h-48 rounded-2xl overflow-hidden relative shadow-md bg-gray-100">
-                            <img src="${t.img}" class="w-full h-full object-cover transition duration-500 group-hover:scale-110">
-                            <div class="absolute bottom-0 w-full p-3 bg-gradient-to-t from-black/80 to-transparent text-white">
-                                <span class="text-[9px] font-bold bg-orange-600 px-1.5 py-0.5 rounded">${t.menu ? t.menu.split(',')[0] : '메뉴'}</span>
-                                <h4 class="font-bold text-xs mt-1 leading-tight">${t.name}</h4>
-                            </div>
-                        </div>
-                    </div>`;
-            });
-        }).catch(err => {
-            console.error(err);
-            document.getElementById('truckList').innerHTML = '<div class="w-full py-10 text-center text-xs text-red-400">데이터 로드 실패</div>';
+    <!-- 지역 선택 모달 -->
+    <div id="regionModal" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center">
+        <div class="bg-white w-full sm:w-96 rounded-t-3xl sm:rounded-3xl p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold">지역 선택</h3>
+                <button onclick="document.getElementById('regionModal').classList.add('hidden')">✕</button>
+            </div>
+            <div class="grid grid-cols-4 gap-2 text-sm" id="regionGrid">
+                <!-- JS로 버튼 생성 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ API URL 교체 필수
+        const API_URL = "YOUR_GOOGLE_SCRIPT_URL_HERE"; 
+        
+        let allData = [];
+
+        // 초기 로드
+        fetch(`${API_URL}?mode=client`).then(r=>r.json()).then(res => {
+            allData = res.data;
+            filterData('전체');
         });
 
-        // [탭 전환] 고객 뷰 <-> 파트너 뷰
-        function switchTab(mode) {
-            const cView = document.getElementById('customerView');
-            const pView = document.getElementById('partnerView');
-            const cBtn = document.getElementById('tabCustomer');
-            const pBtn = document.getElementById('tabPartner');
+        // 데이터 필터링 & 렌더링
+        function filterData(region) {
+            document.getElementById('currentRegion').innerText = region==='전체' ? '전북 전체' : region;
+            const trucks = allData.filter(d => d.category === '푸드트럭' && (region==='전체' || d.region.includes(region)));
+            const staffs = allData.filter(d => d.category === '인력' && (region==='전체' || d.region.includes(region)));
 
-            if(mode === 'customer') {
-                cView.classList.remove('hidden'); pView.classList.add('hidden');
-                cBtn.classList.replace('text-gray-400', 'text-orange-600');
-                pBtn.classList.replace('text-white', 'text-gray-400');
-                document.body.style.backgroundColor = '#F8F9FA';
+            // 트럭 리스트
+            document.getElementById('truckList').innerHTML = trucks.length ? trucks.map(t => `
+                <div onclick='openDetail(${JSON.stringify(t)})' class="cursor-pointer bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100">
+                    <div class="h-32 bg-gray-200"><img src="${t.mainImg}" class="w-full h-full object-cover"></div>
+                    <div class="p-3">
+                        <span class="text-[10px] text-orange-500 font-bold">${t.region}</span>
+                        <h4 class="font-bold text-sm truncate">${t.name}</h4>
+                        <p class="text-xs text-gray-400 truncate">${t.menu}</p>
+                    </div>
+                </div>`).join('') : '<div class="col-span-2 py-10 text-center text-xs text-gray-400">데이터가 없습니다.</div>';
+
+            // 인력 리스트
+            document.getElementById('staffList').innerHTML = staffs.length ? staffs.map(s => `
+                <div onclick='openDetail(${JSON.stringify(s)})' class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex gap-4 cursor-pointer">
+                    <img src="${s.mainImg}" class="w-16 h-16 rounded-lg object-cover bg-gray-100">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h4 class="font-bold">${s.name}</h4>
+                            <span class="text-[10px] bg-blue-100 text-blue-600 px-1.5 rounded">${s.region}</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">${s.menu}</p>
+                    </div>
+                </div>`).join('') : '<div class="py-10 text-center text-xs text-gray-400">데이터가 없습니다.</div>';
+        }
+
+        // 폼 토글
+        function toggleForm(type) {
+            const isStaff = type === 'staff';
+            document.getElementById('fieldTruckOnly').classList.toggle('hidden', isStaff);
+            document.getElementById('fieldStaffOnly').classList.toggle('hidden', !isStaff);
+            document.getElementById('divBiz').classList.toggle('hidden', isStaff);
+            
+            document.getElementById('inputMenu').placeholder = isStaff ? "경력 / 특기" : "주요 메뉴";
+            document.getElementById('labelImg').innerText = isStaff ? "📷 본인 사진 (선택)" : "📷 트럭 사진 (필수)";
+            document.getElementById('partnerBtn').innerText = isStaff ? "인력풀 등록하기" : "입점 신청하기";
+            
+            // 필수값 제어
+            document.getElementById('truckName').required = !isStaff;
+            document.getElementById('truckOwner').required = !isStaff;
+            document.getElementById('staffName').required = isStaff;
+        }
+
+        // 폼 전송
+        document.getElementById('partnerForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('partnerBtn');
+            const originalText = btn.innerText;
+            btn.innerText = "전송 중..."; btn.disabled = true;
+            
+            const formData = new FormData(e.target);
+            const category = formData.get('category');
+            let payload = Object.fromEntries(formData.entries());
+
+            if (category === '인력') {
+                payload.name = document.getElementById('staffName').value;
+                payload.owner = document.getElementById('staffAge').value;
+                payload.age = document.getElementById('staffAge').value;
+                payload.dates = document.getElementById('staffDates').value;
             } else {
-                cView.classList.add('hidden'); pView.classList.remove('hidden');
-                cBtn.classList.replace('text-orange-600', 'text-gray-400');
-                pBtn.classList.replace('text-gray-400', 'text-white');
-                document.body.style.backgroundColor = '#111827';
+                payload.name = document.getElementById('truckName').value;
+                payload.owner = document.getElementById('truckOwner').value;
             }
+
+            payload.fileBiz = await toBase64(document.getElementById('fileBiz').files[0]);
+            payload.fileBank = await toBase64(document.getElementById('fileBank').files[0]);
+            payload.fileOther = await toBase64(document.getElementById('fileOther').files[0]);
+            payload.img1 = await toBase64(document.getElementById('img1').files[0]);
+
+            fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) })
+            .then(r => r.json()).then(res => { alert(res.msg); if(res.status==='success') location.reload(); })
+            .catch(()=>alert('오류')).finally(()=>{ btn.innerText=originalText; btn.disabled=false; });
+        };
+        document.getElementById('quoteForm').onsubmit = async (e) => {
+            e.preventDefault();
+            // 견적 전송 로직 동일하게 구현
+            const btn = document.getElementById('quoteBtn');
+            btn.innerText="전송 중..."; btn.disabled=true;
+            const p = Object.fromEntries(new FormData(e.target).entries());
+            fetch(API_URL, {method:'POST', body:JSON.stringify(p)}).then(r=>r.json()).then(res=>{ alert(res.msg); e.target.reset(); }).finally(()=>{ btn.innerText="견적 받기"; btn.disabled=false; });
+        };
+
+        // 유틸리티
+        const toBase64 = file => new Promise(r => { if(!file)r(''); else {const rx=new FileReader(); rx.onload=e=>r(e.target.result); rx.readAsDataURL(file);} });
+        
+        function openDetail(d) {
+            document.getElementById('detailName').innerText = d.name;
+            document.getElementById('detailRegion').innerText = d.region;
+            document.getElementById('detailMenu').innerText = d.menu;
+            document.getElementById('detailDesc').innerText = d.desc;
+            document.getElementById('detailBadge').innerText = d.category;
+            document.getElementById('detailBadge').className = d.category==='푸드트럭'?"text-[10px] font-bold px-2 py-1 rounded bg-orange-100 text-orange-600 mb-2 inline-block":"text-[10px] font-bold px-2 py-1 rounded bg-blue-100 text-blue-600 mb-2 inline-block";
+            
+            const imgs = d.images.length ? d.images : ["https://via.placeholder.com/400?text=No+Image"];
+            document.getElementById('modalImages').innerHTML = imgs.map(src => `<div class="w-full h-full flex-shrink-0 bg-black"><img src="${src}" class="w-full h-full object-contain"></div>`).join('');
+            document.getElementById('modalImages').style.width = `${imgs.length * 100}%`;
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        // 탭 전환
+        function switchTab(t) {
+            ['home', 'staff', 'partner'].forEach(tab => document.getElementById(tab+'View').classList.add('hidden'));
+            document.getElementById(t+'View').classList.remove('hidden');
+            ['tabHome', 'tabStaff', 'tabPartner'].forEach(btn => document.getElementById(btn).className="flex-1 flex flex-col items-center text-gray-400");
+            const activeBtn = document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1));
+            activeBtn.className = "flex-1 flex flex-col items-center " + (t==='partner'?'text-white':'text-orange-600');
+            document.body.style.backgroundColor = t==='partner'?'#111827':'#F8F9FA';
             window.scrollTo(0,0);
         }
 
-        // [폼 전송] 견적 요청 및 파트너 신청 (파일 업로드 포함)
-        async function handleForm(e, formId, btnId) {
-            e.preventDefault();
-            const btn = document.getElementById(btnId);
-            const originalText = btn.innerText;
-            btn.innerText = "전송 중..."; btn.disabled = true;
-
-            const formData = new FormData(document.getElementById(formId));
-            const payload = Object.fromEntries(formData.entries());
-
-            // 파트너 신청일 경우 파일 처리
-            if(formId === 'partnerForm') {
-                const f1 = document.getElementById('fileBiz').files[0];
-                const f2 = document.getElementById('fileBank').files[0];
-                if(f1) payload.fileBiz = await toBase64(f1);
-                if(f2) payload.fileBank = await toBase64(f2);
-            }
-
-            fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) })
-            .then(r => r.json())
-            .then(json => {
-                alert(json.status === 'success' ? json.msg : '오류: ' + json.msg);
-                if(json.status === 'success') document.getElementById(formId).reset();
-            })
-            .catch(() => alert('서버 통신 오류가 발생했습니다.'))
-            .finally(() => { btn.innerText = originalText; btn.disabled = false; });
-        }
-
-        // 파일을 Base64 문자열로 변환하는 함수
-        const toBase64 = file => new Promise((res, rej) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => res(reader.result);
-            reader.onerror = error => rej(error);
-        });
-
-        // 이벤트 리스너 연결
-        document.getElementById('quoteForm').onsubmit = (e) => handleForm(e, 'quoteForm', 'quoteBtn');
-        document.getElementById('partnerForm').onsubmit = (e) => handleForm(e, 'partnerForm', 'partnerBtn');
+        // 지역 버튼 생성
+        const regions = ['전체','전주','군산','익산','정읍','남원','김제','완주','진안','무주','장수','임실','순창','고창','부안'];
+        document.getElementById('regionGrid').innerHTML = regions.map(r => `<button onclick="filterData('${r}');document.getElementById('regionModal').classList.add('hidden')" class="p-3 bg-gray-100 rounded-xl hover:bg-orange-100 hover:text-orange-600 font-bold">${r}</button>`).join('');
+        function openRegionModal(){ document.getElementById('regionModal').classList.remove('hidden'); }
     </script>
 </body>
 </html>
